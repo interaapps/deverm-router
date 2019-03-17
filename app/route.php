@@ -3,7 +3,7 @@
 
 /*
 
-""           =   Homepage
+"/"          =   Homepage
 "@__404__@"  =   Page not found
 
 (Do not use duplicated keys!)
@@ -15,9 +15,8 @@ $templates_dir = "../views/templates/";
 
 
 $route = [
-  ""                       =>   "homepage.php",
+  "/"                       =>   "homepage.php",
   "/about"                 =>   "about.php",
   "/custom/[getit][url]"   =>   "customtest.php",
-  "/custom/[getit][url][adfs]"   =>   "homepage.php",
   "@__404__@"              =>   "404.php"
 ];

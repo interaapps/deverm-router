@@ -34,8 +34,8 @@ function get_string_between($string, $start, $end){
 function route() {
   global $template, $route, $views_dir;
   $error404 = false;
-  $request = $_SERVER['REDIRECT_URL'];
-  $genrequest = $_SERVER['REDIRECT_URL'];
+  $request = $_SERVER['REQUEST_URI'];
+  $genrequest = $_SERVER['REQUEST_URI'];
   foreach($route as $url=>$view) {
 
     $urlconv = $url;
@@ -48,8 +48,8 @@ function route() {
 
     } elseif (strpos($urlconv, "[") && strpos($urlconv, "]")) {
 
-      
-      if ((substr_count($request, "/")-1) == (substr_count($urlconv, "["))) {
+
+      if ((substr_count($request, "/")) == (substr_count($urlconv, "["))) {
         $repurl = $urlconv;
         foreach(between_as_array($urlconv) as $v1=> $v2) {
           $between = get_string_between($repurl, "[","]");
