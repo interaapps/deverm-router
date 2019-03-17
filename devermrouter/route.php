@@ -1,6 +1,5 @@
 <?php
 global $template, $route, $views_dir, $templates_dir;
-//echo "afsdasfd".$_SERVER['REDIRECT_URL'];
 
 function tmpl($template_name) {
   global $templates_dir;
@@ -40,45 +39,47 @@ function route() {
   foreach($route as $url=>$view) {
 
     $urlconv = $url;
-    if (strpos($urlconv, "[") && strpos($urlconv, "]")) {
-      $repurl = $urlconv;
-      foreach(between_as_array($urlconv) as $v1=> $v2) {
-        $between = get_string_between($repurl, "[","]");
-        $repurl = str_replace( "[".$between."]", "", $repurl);
-      }
-      $between = get_string_between($repurl, "[","]");
-      $repurl = str_replace( "[".$between."]", "", $repurl);
-      $repurl = str_replace("/","",$repurl);
-    //  echo ":".str_replace($repurl."/","",get_string_between($_SERVER['REDIRECT_URL'], "/", ""))."--";
-      if (strpos($request, $repurl) !== false) {
 
-        $_ROUTEVAR = [];
-        foreach (getArguments($url, "/".str_replace($repurl."/","",get_string_between($request, "/", ""))) as $v11=>$v22) {
-          $_ROUTEVAR[$v11] = $v22;
-        }
-        $genrequest = $url;
-        require $views_dir.$view;
-      //  print_r(getArguments($url, str_replace($repurl,"","".$_SERVER['REDIRECT_URL'])));
-      }
-    } elseif(array_key_exists($request, $route)) {
+    if(array_key_exists($request, $route)) {
       if ($url == $request) {
-
         require $views_dir.$view;
+        return 0;
       }
 
+    } elseif (strpos($urlconv, "[") && strpos($urlconv, "]")) {
+
+      
+      if ((substr_count($request, "/")-1) == (substr_count($urlconv, "["))) {
+        $repurl = $urlconv;
+        foreach(between_as_array($urlconv) as $v1=> $v2) {
+          $between = get_string_between($repurl, "[","]");
+          $repurl = str_replace( "[".$between."]", "", $repurl);
+        }
+        $between = get_string_between($repurl, "[","]");
+        $repurl = str_replace("[".$between."]", "", $repurl);
+        $repurl = str_replace("/","",$repurl);
+        if (strpos($request, $repurl) !== false) {
+
+          $_ROUTEVAR = [];
+          foreach (getArguments($url, "/".str_replace($repurl."/","",get_string_between($request, "/", ""))) as $v11=>$v22) {
+            $_ROUTEVAR[$v11] = $v22;
+          }
+          $genrequest = $url;
+          require $views_dir.$view;
+          return 1;
+        }
+      }
     }
-   //  echo $url;
   }
   if (!array_key_exists($genrequest, $route))
     $error404 = true;
   if($error404) {
     require $views_dir.$route["@__404__@"];
+    return 404;
   }
 }
 function getArguments($str, $url2) {
     $fasdf = [];
-    // $str = "[aa][pp][asdf]";
-    // $url = "/hallool/a/sfd";
     foreach(str_split($str) as $l) {
       if ($l=="[") {
         $repafd = get_string_between($str, "[", "]");
@@ -86,7 +87,6 @@ function getArguments($str, $url2) {
         $str=str_replace("[".$repafd."]","",$str);
       }
     }
-    //print_r($fasdf);
     $url = $url2;
     $fasdf2 = [];
     foreach (str_split($url) as $l) {

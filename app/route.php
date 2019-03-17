@@ -18,5 +18,6 @@ $route = [
   ""                       =>   "homepage.php",
   "/about"                 =>   "about.php",
   "/custom/[getit][url]"   =>   "customtest.php",
+  "/custom/[getit][url][adfs]"   =>   "homepage.php",
   "@__404__@"              =>   "404.php"
 ];
