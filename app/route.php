@@ -15,7 +15,7 @@ $templates_dir = "../views/templates/";
 
 
 $route = [
-  "/"                       =>   "homepage.php",
+  "/"                      =>   "homepage.php",
   "/about"                 =>   "about.php",
   "/custom/[getit][url]"   =>   "customtest.php",
   "@__404__@"              =>   "404.php"
