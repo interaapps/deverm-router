@@ -6,7 +6,14 @@ class router {
   public $route;
   public $views_dir;
   public $templates;
+  public $GetOrPost;
 
+  function setRequestMethods($arr) {
+    foreach ($arr as $k1=>$v1) {
+      $this->GetOrPost[$k1] = $v1;
+      echo $GetOrPost[$k1];
+    }
+  }
 
   function addNested($array, $path="") {
     foreach($array as $v1 => $v2) {
@@ -31,7 +38,6 @@ class router {
   }
 
   function route() {
-
     $route     =  $this->route;
     $template  =  $this->template;
     $views_dir =  $this->views_dir;
@@ -39,19 +45,37 @@ class router {
     $error404 = false;
     $request = str_replace("?".get_string_between($_SERVER['REQUEST_URI'], "?", ""), "", $_SERVER['REQUEST_URI']);
     $genrequest = $request;
+
+    $method = $_SERVER['REQUEST_METHOD'];
+
     foreach($route as $url=>$view) {
 
       $urlconv = $url;
-      //echo "<br>".$url."--".$view."<br>";
-      if(array_key_exists($request, $route)) {
+
+      if (strpos($view, "!") !== false) {
+        call_user_func(get_string_between($view, "!", "@").'::'.get_string_between($view, "@", ""));
+      }elseif(array_key_exists($request, $route)) {
         if ($url == $request) {
-          require $views_dir.$view;
+            if($method==='POST' && isset($this->GetOrPost[$request]["post"]))
+              require $views_dir.$this->GetOrPost[$request]["post"];
+            elseif($method==='DELETE' && isset($this->GetOrPost[$request]["delete"]))
+              require $views_dir.$this->GetOrPost[$request]["delete"];
+            elseif($method==='PUT' && isset($this->GetOrPost[$request]["put"]))
+              require $views_dir.$this->GetOrPost[$request]["put"];
+            elseif($method==='CONNECT' && isset($this->GetOrPost[$request]["connect"]))
+              require $views_dir.$this->GetOrPost[$request]["connect"];
+            elseif($method==='TRACE' && isset($this->GetOrPost[$request]["trace"]))
+              require $views_dir.$this->GetOrPost[$request]["trace"];
+            elseif($method==='OPTIONS' && isset($this->GetOrPost[$request]["options"]))
+              require $views_dir.$this->GetOrPost[$request]["options"];
+            else
+              require $views_dir.$view;
+          //  echo "hi";
           return 0;
         }
 
       } elseif (strpos($urlconv, "[") && strpos($urlconv, "]")) {
 
-      //  echo "13414".$urlconv;
         $uurl = str_replace("[".get_string_between($url, "[", ""), "", $url);
         $rrrequest = str_replace($uurl, "", $request);
         if ($uurl == $rrrequest) {
