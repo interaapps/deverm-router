@@ -94,7 +94,7 @@ class router {
               $_ROUTEVAR[$v11] = $v22;
             }
             $genrequest = $url;
-            require $views_dir.$view;
+            load($view, $views_dir.$view);
             return 1;
           }
         }
