@@ -52,34 +52,33 @@ class router {
 
       $urlconv = $url;
 
-      if (strpos($view, "!") !== false) {
-        call_user_func(get_string_between($view, "!", "@").'::'.get_string_between($view, "@", ""));
-      }elseif(array_key_exists($request, $route)) {
+      if(array_key_exists($request, $route)) {
         if ($url == $request) {
             if($method==='POST' && isset($this->GetOrPost[$request]["post"]))
-              require $views_dir.$this->GetOrPost[$request]["post"];
+              load($view ,$views_dir.$this->GetOrPost[$request]["post"]);
             elseif($method==='DELETE' && isset($this->GetOrPost[$request]["delete"]))
-              require $views_dir.$this->GetOrPost[$request]["delete"];
+              load($view,  $views_dir.$this->GetOrPost[$request]["delete"]);
             elseif($method==='PUT' && isset($this->GetOrPost[$request]["put"]))
-              require $views_dir.$this->GetOrPost[$request]["put"];
+              load($view,  $views_dir.$this->GetOrPost[$request]["put"]);
             elseif($method==='CONNECT' && isset($this->GetOrPost[$request]["connect"]))
-              require $views_dir.$this->GetOrPost[$request]["connect"];
+              load($view,  $views_dir.$this->GetOrPost[$request]["connect"]);
             elseif($method==='TRACE' && isset($this->GetOrPost[$request]["trace"]))
-              require $views_dir.$this->GetOrPost[$request]["trace"];
+              load($view,  $views_dir.$this->GetOrPost[$request]["trace"]);
             elseif($method==='OPTIONS' && isset($this->GetOrPost[$request]["options"]))
-              require $views_dir.$this->GetOrPost[$request]["options"];
+              load($view, $views_dir.$this->GetOrPost[$request]["options"]);
             else
-              require $views_dir.$view;
+              load($view, $views_dir.$view);
           //  echo "hi";
           return 0;
         }
 
       } elseif (strpos($urlconv, "[") && strpos($urlconv, "]")) {
+    //  echo str_replace($repurl."/","",get_string_between($request, "/", ""));
 
         $uurl = str_replace("[".get_string_between($url, "[", ""), "", $url);
         $rrrequest = str_replace($uurl, "", $request);
-        if ($uurl == $rrrequest) {
-        if ((substr_count($request, "/")) == (substr_count($urlconv, "["))) {
+
+        if ((substr_count($request, "/")-1) == (substr_count($urlconv, "["))) {
           $repurl = $urlconv;
           foreach(between_as_array($urlconv) as $v1=> $v2) {
             $between = get_string_between($repurl, "[","]");
@@ -99,7 +98,7 @@ class router {
             return 1;
           }
         }
-        }
+
       }
     }
     if (!array_key_exists($genrequest, $route))
@@ -119,7 +118,13 @@ class router {
 
 
 
-
+function load($view, $require) {
+  if (strpos($view, "!") !== false) {
+    call_user_func(get_string_between($view, "!", "@").'::'.get_string_between($view, "@", ""));
+  } else {
+    require $require;
+  }
+}
 
 
 
