@@ -88,11 +88,12 @@ class router {
           $repurl = str_replace("[".$between."]", "", $repurl);
           $repurl = str_replace("/","",$repurl);
           if (strpos($request, $repurl) !== false) {
-
+            global $_ROUTEVAR;
             $_ROUTEVAR = [];
             foreach (getArguments($url, "/".str_replace($repurl."/","",get_string_between($request, "/", ""))) as $v11=>$v22) {
               $_ROUTEVAR[$v11] = $v22;
             }
+
             $genrequest = $url;
             load($view, $views_dir.$view);
             return 1;
@@ -119,6 +120,7 @@ class router {
 
 
 function load($view, $require) {
+  global $_ROUTEVAR;
   if (strpos($view, "!") !== false) {
     call_user_func(get_string_between($view, "!", "@").'::'.get_string_between($view, "@", ""));
   } else {
