@@ -27,7 +27,8 @@ class router {
     }
   }
 
-  function __construct($template, $views_dir, $route=[]) {
+  function __construct($views_dir, $template) {
+    $route=[];
     $this->route     =  $route;
     $this->template  =  $template;
     $this->views_dir =  $views_dir;
@@ -68,16 +69,13 @@ class router {
               load($view, $views_dir.$this->GetOrPost[$request]["options"]);
             else
               load($view, $views_dir.$view);
-          //  echo "hi";
           return 0;
         }
 
       } elseif (strpos($urlconv, "[") && strpos($urlconv, "]")) {
-    //  echo str_replace($repurl."/","",get_string_between($request, "/", ""));
 
         $uurl = str_replace("[".get_string_between($url, "[", ""), "", $url);
         $rrrequest = str_replace($uurl, "", $request);
-
         if ((substr_count($request, "/")-1) == (substr_count($urlconv, "["))) {
           $repurl = $urlconv;
           foreach(between_as_array($urlconv) as $v1=> $v2) {
@@ -90,7 +88,7 @@ class router {
           if (strpos($request, $repurl) !== false) {
             global $_ROUTEVAR;
             $_ROUTEVAR = [];
-            foreach (getArguments($url, "/".str_replace($repurl."/","",get_string_between($request, "/", ""))) as $v11=>$v22) {
+            foreach (getArguments($url, "/".str_replace_first($repurl."/","",get_string_between($request, "/", ""))) as $v11=>$v22) {
               $_ROUTEVAR[$v11] = $v22;
             }
 
@@ -105,7 +103,8 @@ class router {
     if (!array_key_exists($genrequest, $route))
       $error404 = true;
     if($error404) {
-      require $views_dir.$route["@__404__@"];
+      header('HTTP/1.1 404 Not Found');
+      include $views_dir.$route["@__404__@"];
       return 404;
     }
   }
@@ -116,13 +115,20 @@ class router {
 }
 
 
+function str_replace_first($from, $to, $content){
+    $from = '/'.preg_quote($from, '/').'/';
 
+    return preg_replace($from, $to, $content, 1);
+}
 
 
 function load($view, $require) {
   global $_ROUTEVAR;
   if (strpos($view, "!") !== false) {
-    call_user_func(get_string_between($view, "!", "@").'::'.get_string_between($view, "@", ""));
+    if (strpos($view, "@") !== false)
+      call_user_func(get_string_between($view, "!", "@").'::'.get_string_between($view, "@", ""));
+    else
+      call_user_func(get_string_between($view, "!", ""));
   } else {
     require $require;
   }
@@ -167,7 +173,7 @@ function getArguments($str, $url2) {
       if ($l=="[") {
         $repafd = get_string_between($str, "[", "]");
         array_push($fasdf, $repafd);
-        $str=str_replace("[".$repafd."]","",$str);
+        $str=str_replace_first("[".$repafd."]","",$str);
       }
     }
     $url = $url2;
@@ -178,7 +184,7 @@ function getArguments($str, $url2) {
           $repafd2 = get_string_between($url, "/", "/");
         else $repafd2 = get_string_between($url, "/", "");
         array_push($fasdf2, $repafd2);
-        $url = str_replace("/".$repafd2, "",$url);
+        $url = str_replace_first("/".$repafd2, "",$url);
       }
     }
 

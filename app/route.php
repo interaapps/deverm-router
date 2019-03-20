@@ -8,9 +8,8 @@
 
 */
 
-$views_dir = "../views/";
-$templates_dir = "../views/templates/";
-
+$views_dir      =  "../views/";
+$templates_dir  =  "../views/templates/";
 
 $route = [
   "/"                        =>     "homepage.php",

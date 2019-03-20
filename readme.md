@@ -1,22 +1,34 @@
 
-# deverm-router 1.2
+
+# deverm-router 1.3
 Deverm-php-Router is an open-source PHP page-router.
 
-## Index.php
+[Standard code](#StandardCode)
+[News](#Updates)
+[Todo](#Todo)
+
+## StandardCode
+
+### Index.php
 ```php
 <?php
-//*    Show errors   (Only for debugging!)
+
+<?php
+/*
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);// */
 
-require "../app/route.php";                 // Path of the route file
-require "../devermrouter/route.php";		// Path of the devermroute script
-route();
+require "../app/route.php";
+require "../devermrouter/route.php";
+
+$router = new router($views_dir, $templates_dir);
+$router->set($route);
+$router->route();
 ```
 
 
-## .htaccess
+### .htaccess
 ```
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-d
@@ -24,30 +36,52 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^(.+)$ index.php [QSA,L]
 ```
 
-## Routing
+### Routing
 
 ```php
 
 <?php
-
-
 /*
-""           =   Homepage
+
+"/"          =   Homepage
 "@__404__@"  =   Page not found
 
 (Do not use duplicated keys!)
 
 */
 
-$views_dir = "../views/";                 // PATH OF YOUR VIEWS
-$templates_dir = "../views/templates/";   // PATH OF YOUR TEMPLATES
-
+$views_dir      =  "../views/";
+$templates_dir  =  "../views/templates/";
 
 $route = [
-  "/"                      =>   "homepage.php",
-  "/about"                 =>   "about.php",
-  "/custom/[getit][url]"   =>   "customtest.php",
-  "@__404__@"              =>   "404.php"
+  "/"                        =>     "homepage.php",
+  "/about"                   =>     "about.php",
+  "/custom/[getit][url]"     =>     "customtest.php",
+  "@__404__@"                =>     "404.php"
 ];
+
 ```
+
+## Updates
+
+ 
+### 1.3
+
+```
+Fixed bugs. Added Method Routing without without classes.
+Changed route construct. (You have to set the views-dir first [new router($views_dir, $templates_dir)])
+```
+
+### 1.2
+
+```
+Fixed bugs. Added Method Routing.
+Added Request Methods
+```
+
+## Todo
+Adding soon
+ - [ ]  -
+ - [x] -
+
 
