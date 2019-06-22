@@ -1,4 +1,3 @@
 <?php tmpl('header'); ?>
-Homepage
-
+WELCOME
 <?php tmpl('footer'); ?>

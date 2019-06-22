@@ -1,9 +1,8 @@
 <?php tmpl('header'); ?>
 Custom: <?php
 
-echo $_ROUTEVAR["getit"];
-echo "  ";
-echo $_ROUTEVAR["url"];
+// Getting the first route variable
+echo $_ROUTEVAR[1];
 ?>
 
 <?php tmpl('footer'); ?>

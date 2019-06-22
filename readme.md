@@ -1,6 +1,6 @@
 
 
-# deverm-router 1.3
+# deverm-router 2.0
 Deverm-php-Router is an open-source PHP page-router.
 
 [Standard code](#StandardCode)
@@ -22,7 +22,7 @@ error_reporting(E_ALL);// */
 require "../app/route.php";
 require "../devermrouter/route.php";
 
-$router = new router($views_dir, $templates_dir);
+$router = new Router($views_dir, $templates_dir);
 $router->set($route);
 $router->route();
 ```
@@ -64,6 +64,12 @@ $route = [
 
 ## Updates
 
+### 2.0
+
+```
+Made everything nicer.
+Autoload function, new Routevar system with regex, better function support for routes and more.
+```
  
 ### 1.3
 
