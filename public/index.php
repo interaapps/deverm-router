@@ -6,7 +6,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);// */
 chdir('..');
 require "app/route.php";
-require "devermrouter/Route.php";
+require "devermrouter/Router.php";
 
 // Autoloads the controllers
 Router::autoload("app/controller");
