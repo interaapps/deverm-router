@@ -1,6 +1,6 @@
 
 
-# deverm-router 2.1
+# deverm-router 2.3
 Deverm-php-Router is an open-source PHP page-router.
 
 [Standard code](#StandardCode)
@@ -13,7 +13,6 @@ Deverm-php-Router is an open-source PHP page-router.
 ```php
 <?php
 
-<?php
 /*
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -56,13 +55,19 @@ $templates_dir  =  "../views/templates/";
 $route = [
   "/"                        =>     "homepage.php",
   "/about"                   =>     "about.php",
-  "/custom/[getit][url]"     =>     "customtest.php",
+  "/custom/([a-z]*)"         =>     "customtest.php",
   "@__404__@"                =>     "404.php"
 ];
 
 ```
 
 ## Updates
+
+### 2.2
+
+```
+You can now give variables to the view method ( view("view.php", ["variable", "value"]) )
+```
 
 ### 2.1
 
