@@ -9,6 +9,8 @@ class Router {
   public $viewsDirectory;
   public $templatesDirectory;
   public $requestMethod;
+  public $initLastDirectoryFunction;
+  public $namespace="app\controller\\";
 
   public static function autoload($dir) {
     $files = scandir($dir);
@@ -19,6 +21,34 @@ class Router {
               else
                 include $dir."/".$file;
             }
+  }
+
+  public function group(string $prefix, $func) {
+    $innerRouter = new Router(false);
+    $func($innerRouter);
+    $innerRouter->setDirectories($this->viewsDirectory, $this->templatesDirectory);
+    foreach ($innerRouter->route as $route=>$routingTo) {
+      $this->route[$prefix.$route] = $routingTo;
+      $this->requestMethod[$prefix.$route] = $innerRouter->requestMethod[$route];
+    }
+  }
+
+  public function middleware(string $middleware, string $exceptionView, $func) {
+    $innerRouter = new Router(false);
+    $func($innerRouter);
+    $innerRouter->setDirectories($this->viewsDirectory, $this->templatesDirectory);
+    $middlewareStatus = false;
+    if (strpos($middleware, "@") !== false)
+      $middlewareStatus = call_user_func( Router::get_string_between($middleware, "!", "@").'::'.Router::get_string_between($middleware, "@", "") );
+    else
+      $middlewareStatus = call_user_func(Router::get_string_between($middleware, "!", ""));
+    foreach ($innerRouter->route as $route=>$routingTo) {
+      if ($middlewareStatus)
+        $this->route[$route] = $routingTo;
+      else 
+        $this->route[$route] = $exceptionView;  
+      $this->requestMethod[$route] = $innerRouter->requestMethod[$route];
+    }
   }
 
 
@@ -40,17 +70,19 @@ class Router {
     }
   }
 
-  function __construct() {
+  function __construct($initLastDirectoryFunction = true) {
     $route=[];
     $this->route     =  $route;
+    $this->initLastDirectoryFunction = $initLastDirectoryFunction;
   }
 
   function setDirectories($viewsDirectory, $templatesDirectory="../templatesDirectorys") {
-    
-    self::$lastTemplatesDirectory = $templatesDirectory;
-    self::$lastViewsDirectory = $viewsDirectory;
     $this->templatesDirectory  =  $templatesDirectory;
     $this->viewsDirectory =  $viewsDirectory;
+    if ($this->initLastDirectoryFunction) {
+      self::$lastTemplatesDirectory = $templatesDirectory;
+      self::$lastViewsDirectory = $viewsDirectory;
+    }
   }
 
   function set($array) {
@@ -81,12 +113,27 @@ class Router {
             foreach($methods as $meth) {
               if($method===strtoupper($meth) && isset($this->requestMethod[$url][$meth])) {
 
-                Router::load($this->requestMethod[$url][$meth] ,  $viewsDirectory.((!is_callable($this->requestMethod[$url][$meth])) ? $this->requestMethod[$url][$meth] : ""), $this);
+                $this->load($this->requestMethod[$url][$meth] ,  $viewsDirectory.((!is_callable($this->requestMethod[$url][$meth])) ? $this->requestMethod[$url][$meth] : ""), $this);
                 return 0;
               }
             }
-            Router::load($view, $viewsDirectory.((!is_callable($view)) ? $view : ""), $this);
+            $this->load($view, $viewsDirectory.((!is_callable($view)) ? $view : ""), $this);
 
+            // if($method==='POST' && isset($this->requestMethod[$request]["post"]))
+            //   Router::load($this->requestMethod[$request]["post"] ,  $viewsDirectory.((!is_callable($this->requestMethod[$request]["post"])) ? $this->requestMethod[$request]["post"] : ""), $this);
+            // elseif($method==='DELETE' && isset($this->requestMethod[$request]["delete"]))
+            //   Router::load($this->requestMethod[$request]["delete"],  $viewsDirectory.$this->requestMethod[$request]["delete"], $this);
+            // elseif($method==='PUT' && isset($this->requestMethod[$request]["put"]))
+            //   Router::load($this->requestMethod[$request]["put"],  $viewsDirectory.$this->requestMethod[$request]["put"], $this);
+            // elseif($method==='CONNECT' && isset($this->requestMethod[$request]["connect"]))
+            //   Router::load($this->requestMethod[$request]["connect"],  $viewsDirectory.$this->requestMethod[$request]["connect"], $this);
+            // elseif($method==='TRACE' && isset($this->requestMethod[$request]["trace"]))
+            //   Router::load($this->requestMethod[$request]["trace"],  $viewsDirectory.$this->requestMethod[$request]["trace"], $this);
+            // elseif($method==='OPTIONS' && isset($this->requestMethod[$request]["options"]))
+            //   Router::load($this->requestMethod[$request]["options"], $viewsDirectory.$this->requestMethod[$request]["options"], $this);
+            // else {
+            //   Router::load($view, $viewsDirectory.((!is_callable($view)) ? $view : ""), $this);
+            // }
             
           return 0;
         
@@ -103,6 +150,8 @@ class Router {
       include $viewsDirectory.$route["@__404__@"];
       return 404;
     }
+
+
   }
 
 
@@ -121,7 +170,7 @@ class Router {
    
 
 
-    public static function load($view, $require, $parent=false) {
+    public function load($view, $require, $parent=false) {
       global $_ROUTEVAR;
       //echo $require."--";
       if ($require !== $parent->viewsDirectory."@") {
@@ -130,7 +179,7 @@ class Router {
           else
             if (strpos($view, "!") !== false) {
               if (strpos($view, "@") !== false)
-                echo call_user_func(  "app\controller\\".Router::get_string_between($view, "!", "@").'::'.Router::get_string_between($view, "@", "") );
+                echo call_user_func(  $this->namespace.Router::get_string_between($view, "!", "@").'::'.Router::get_string_between($view, "@", "") );
               else
                 echo call_user_func(Router::get_string_between($view, "!", ""));
             } else {
