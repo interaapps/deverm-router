@@ -33,7 +33,7 @@ class Router {
     }
   }
 
-  public function middleware(string $middleware, string $exceptionView, $func) {
+  public function middleware(string $middleware, $exceptionView, $func) {
     $innerRouter = new Router(false);
     $func($innerRouter);
     $innerRouter->setDirectories($this->viewsDirectory, $this->templatesDirectory);
@@ -106,8 +106,6 @@ class Router {
       if(preg_match_all('#^' . $url . '$#', $request, $matches)) {
         foreach ($matches as $key=>$val)
             $_ROUTEVAR[$key] = $val[0];
-            if (strpos($request, "dele"))
-              echo json_encode($_ROUTEVAR);
           
             $methods = ["post", "delete", "put", "connect", "trace", "options"];
             foreach($methods as $meth) {
@@ -253,4 +251,3 @@ function view($templatesDirectory_name, $vars=false) {
   }
   include Router::$lastViewsDirectory."/".$templatesDirectory_name.".php";
 }
-
