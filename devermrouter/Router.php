@@ -1,8 +1,6 @@
 <?php
 
 class Router {
-
-
   public static $lastViewsDirectory;
   public static $lastTemplatesDirectory;
   public $route;
@@ -33,6 +31,13 @@ class Router {
     }
   }
 
+    /**
+     * Check if the $middleware method is true
+     *
+     * @param string $middleware
+     * @param $exceptionView
+     * @param $func
+     */
   public function middleware(string $middleware, $exceptionView, $func) {
     $innerRouter = new Router(false);
     $func($innerRouter);
@@ -51,7 +56,9 @@ class Router {
     }
   }
 
-
+  /**
+   * Set Request Methods for the array Router
+   */
   function setRequestMethods($arr) {
     foreach ($arr as $k1=>$v1) {
       $this->requestMethod[$k1] = $v1;
@@ -85,6 +92,10 @@ class Router {
     }
   }
 
+    /**
+     * Set the array router
+     * @param $array
+     */
   function set($array) {
     $this->route = array_merge($this->route, $array);
   }
@@ -116,22 +127,6 @@ class Router {
               }
             }
             $this->load($view, $viewsDirectory.((!is_callable($view)) ? $view : ""), $this);
-
-            // if($method==='POST' && isset($this->requestMethod[$request]["post"]))
-            //   Router::load($this->requestMethod[$request]["post"] ,  $viewsDirectory.((!is_callable($this->requestMethod[$request]["post"])) ? $this->requestMethod[$request]["post"] : ""), $this);
-            // elseif($method==='DELETE' && isset($this->requestMethod[$request]["delete"]))
-            //   Router::load($this->requestMethod[$request]["delete"],  $viewsDirectory.$this->requestMethod[$request]["delete"], $this);
-            // elseif($method==='PUT' && isset($this->requestMethod[$request]["put"]))
-            //   Router::load($this->requestMethod[$request]["put"],  $viewsDirectory.$this->requestMethod[$request]["put"], $this);
-            // elseif($method==='CONNECT' && isset($this->requestMethod[$request]["connect"]))
-            //   Router::load($this->requestMethod[$request]["connect"],  $viewsDirectory.$this->requestMethod[$request]["connect"], $this);
-            // elseif($method==='TRACE' && isset($this->requestMethod[$request]["trace"]))
-            //   Router::load($this->requestMethod[$request]["trace"],  $viewsDirectory.$this->requestMethod[$request]["trace"], $this);
-            // elseif($method==='OPTIONS' && isset($this->requestMethod[$request]["options"]))
-            //   Router::load($this->requestMethod[$request]["options"], $viewsDirectory.$this->requestMethod[$request]["options"], $this);
-            // else {
-            //   Router::load($view, $viewsDirectory.((!is_callable($view)) ? $view : ""), $this);
-            // }
             
           return 0;
         
@@ -139,7 +134,6 @@ class Router {
       }
     
     }
-    
     
     if (!array_key_exists($genrequest, $route))
       $error404 = true;
@@ -192,6 +186,10 @@ class Router {
     }
 
 
+    function setPageNotFound($func) {
+      $this->route["@__404__@"] = $func;
+    }
+
     function post($route, $func) {
       if (!isset($this->requestMethod[$route])) $this->requestMethod[$route] = [];
       if (!isset($this->route[$route]))
@@ -230,24 +228,34 @@ class Router {
       $this->requestMethod[$route] = ["connect"=>$func];
     }
 
+    public static function view($templatesDirectory_name, $vars=false) {
+        if ($vars !== false) {
+            foreach($vars as $key=>$val){
+                global ${$key};
+                ${$key} = $val;
+            }
+        }
+        include Router::$lastViewsDirectory."/".$templatesDirectory_name.".php";
+    }
+
+    public static function tmpl($templatesDirectory_name, $vars=false) {
+        if ($vars !== false) {
+            foreach($vars as $key=>$val){
+                global ${$key};
+                ${$key} = $val;
+            }
+        }
+        include Router::$lastTemplatesDirectory.$templatesDirectory_name.".php";
+    }
+
+
 }
 
 function tmpl($templatesDirectory_name, $vars=false) {
-  if ($vars !== false) {
-    foreach($vars as $key=>$val){
-      global ${$key};
-      ${$key} = $val;
-    }
-  }
-  include Router::$lastTemplatesDirectory.$templatesDirectory_name.".php";
+  Router::tmpl($templatesDirectory_name, $vars);
 }
 
 function view($templatesDirectory_name, $vars=false) {
-   if ($vars !== false) {
-    foreach($vars as $key=>$val){
-      global ${$key};
-      ${$key} = $val;
-    }
-  }
-  include Router::$lastViewsDirectory."/".$templatesDirectory_name.".php";
+   Router::view($templatesDirectory_name, $vars);
 }
+
