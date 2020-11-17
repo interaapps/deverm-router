@@ -7,9 +7,12 @@
         ""
     ],
     "modules": {},
-    "directnamespaces": {
-    	"de\\interaapps\\ulole\\router\\Router": "modules/de/interaapps/ulole/router/Router.php",
-    	"de\\interaapps\\ulole\\router\\Response": "modules/de/interaapps/ulole/router/Response.php",
-    	"de\\interaapps\\ulole\\router\\Request": "modules/de/interaapps/ulole/router/Request.php",
+    "namespace_bindings": {
+    	"de\\interaapps\\ulole\\router": "de/interaapps/ulole/router"
+    },
+    "namespaces": {
+    	"de\\interaapps\\ulole\\router\\Router": "modules/deverm/de/interaapps/ulole/router/Router.php",
+    	"de\\interaapps\\ulole\\router\\Response": "modules/deverm/de/interaapps/ulole/router/Response.php",
+    	"de\\interaapps\\ulole\\router\\Request": "modules/deverm/de/interaapps/ulole/router/Request.php"
     }
 }
