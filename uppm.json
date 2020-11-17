@@ -10,7 +10,7 @@
     "namespace_bindings": {
     	"de\\interaapps\\ulole\\router": "de/interaapps/ulole/router"
     },
-    "namespaces": {
+    "directnamespaces": {
     	"de\\interaapps\\ulole\\router\\Router": "modules/deverm/de/interaapps/ulole/router/Router.php",
     	"de\\interaapps\\ulole\\router\\Response": "modules/deverm/de/interaapps/ulole/router/Response.php",
     	"de\\interaapps\\ulole\\router\\Request": "modules/deverm/de/interaapps/ulole/router/Request.php"
