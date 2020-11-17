@@ -7,5 +7,9 @@
         ""
     ],
     "modules": {},
-    "namespaces": {}
+    "directnamespaces": {
+    	"de\\interaapps\\ulole\\router\\Router": "modules/de/interaapps/ulole/router/Router.php",
+    	"de\\interaapps\\ulole\\router\\Response": "modules/de/interaapps/ulole/router/Response.php",
+    	"de\\interaapps\\ulole\\router\\Request": "modules/de/interaapps/ulole/router/Request.php",
+    }
 }
