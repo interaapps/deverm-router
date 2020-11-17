@@ -1,50 +1,63 @@
 <?php
-namespace modules\deverm;
+namespace de\interaapps\ulole\router;
 
 class Request {
+    private $body;
+    private $routeVars;
+    private $params = null;
 
-    public static function routeVar($param=false) {
-        global $_ROUTEVAR;
-        if ($param === false)
-            return $_ROUTEVAR;
-        return $_ROUTEVAR[$param];
+    public function __construct($body, $routeVars) {
+        $this->body = $body;
+        $this->routeVars = $routeVars;
     }
 
-    public static function POST($param=false) {
-        if ($param === false)
-            return $_POST;
-
-        if (isset($_POST[$param]))
-            return $_POST[$param];
-        return null;
+    public function body(){
+        return $this->body;
     }
 
-    public static function GET($param=false) {
-        if ($param === false)
+    public function json(){
+        return json_decode($this->body);
+    }
+
+    public function getRouteVar($routeVar){
+        return $this->routeVars[$routeVar];
+    }
+
+    public function getParams(){
+        if ($this->params === null) {
+            $this->params = $_POST;
+
+            if (isset($_SERVER["CONTENT_TYPE"]) && strpos($_SERVER["CONTENT_TYPE"], "application/json") !== false){
+                $this->params = (array) json_decode(file_get_contents('php://input'), true);
+            }
+        }
+        
+        return $this->params;
+    }
+
+    public function getParam($param){
+        return $this->getParams()[$param];
+    }
+
+    public function getQuery($query = false){
+        if ($query === false)
             return $_GET;
-        return $_GET[$param];
+        return $_GET[$query];
     }
 
-    public static function getUserAgent() {
+    public function getUserAgent() {
         return $_SERVER["HTTP_USER_AGENT"];
     }
 
-    public static function getServerSoftware() {
-        return $_SERVER["SERVER_SOFTWARE"];
-    }
-
-    public static function getRemotePort() {
+    public function getRemotePort() {
         return $_SERVER["SERVER_NAME"];
     }
 
-    /**
-     *  You shouldn't use this version! Use getRemoteAddress instead
-     */
-    public static function getPHPRemoteAddress() {
+    public function getPHPRemoteAddress() {
         return $_SERVER["REMOTE_ADDR"];
     }
 
-    public static function getRemoteAddress() {
+    public function getRemoteAddress() {
         if (!empty($_SERVER['HTTP_CLIENT_IP']))
             $ip=$_SERVER['HTTP_CLIENT_IP'];
          elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
@@ -54,31 +67,31 @@ class Request {
         return $ip; 
     }
 
-    public static function getAcceptedLanguages() {
+    public function getAcceptedLanguages() {
         return $_SERVER["HTTP_ACCEPT_LANGUAGE"];
     }
 
-    public static function getDocumentRoot() {
-        return $_SERVER["DOCUMENT_ROOT"];
-    }
-
-    public static function getHttpCookie() {
+    public function getHttpCookie() {
         return $_SERVER["HTTP_COOKIE"];
     }
 
-    public static function getRequestURI() {
+    public function getCookie($cookie){
+        return $_COOKIE[$cookie];
+    }
+
+    public function getRequestURI() {
         return $_SERVER["REQUEST_URI"];
     }
 
-    public static function getServerName() {
+    public function getServerName() {
         return $_SERVER["SERVER_NAME"];
     }
 
-    public static function getServerPort() {
+    public function getServerPort() {
         return $_SERVER["SERVER_PORT"];
     }
 
-    public static function getHost() {
+    public function getHost() {
         return $_SERVER["HTTP_HOST"];
     }
 

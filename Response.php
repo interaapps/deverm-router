@@ -1,42 +1,48 @@
 <?php
-namespace modules\deverm;
+namespace de\interaapps\ulole\router;
 
 class Response {
-    public static function json($arr) {
+    public function json($object){
         header('Content-Type: application/json');
-        echo \json_encode($arr);
+        echo json_encode($object);
+        return $this;
     }
 
-    public static function returnJson($arr) {
-        header('Content-Type: application/json');
-        return \json_encode($arr);
-    }
-
-    public static function setContentType($type) {
+    public function setContentType($type) {
         header('Content-Type: '.$type);
+        return $this;
     }
 
-    public static function setCode($code) {
+    public function setCode($code) {
         http_response_code($code);
+        return $this;
     }
 
-    public static function setNotFound() {
+    public function setNotFound() {
         header("HTTP/1.0 404 Not Found");
+        return $this;
     }
 
-    public static function setHeader($header, $value=false) {
+    public function setHeader($header, $value=false) {
         if ($value === false)
             header($header);
         else
             header($header.": ".$value);
+        return $this;
     }
     
-    public static function setHeaders($header) {
+    public function setHeaders($header) {
         foreach ($header as $name=>$value)
             header($name.": ".$value);
+        return $this;
     }
 
-    public static function redirect($link, $code=307) {
+    public function setCookie($name, $value = "", $expires = 0, $path = "", $domain = "", $secure = false, $httponly = false){
+        setcookie($name, $value, $expires, $path, $domain, $secure, $httponly);
+        return $this;
+    }
+
+    public function redirect($link, $code=307) {
         @ob_clean();
         http_response_code($code);
         header("Location: ".$link);
@@ -45,7 +51,6 @@ class Response {
 		echo "<script>window.location.replace('",$link,"')</script>";
         echo "<a href='".$link."'>CLICK HERE</title>";
         exit();
+        return $this;
     }
-
-
 }

@@ -1,285 +1,145 @@
 <?php
-namespace modules\deverm;
+namespace de\interaapps\ulole\router;
 
 class Router {
-  public static $lastViewsDirectory;
-  public static $lastTemplatesDirectory;
-  public $route;
-  public $viewsDirectory;
-  public $templatesDirectory;
-  public $requestMethod;
-  public $initLastDirectoryFunction;
-  public $namespace="app\controller\\";
-
-  public static function autoload($dir) {
-    $files = scandir($dir);
-    foreach($files as $file) {
-        if ($file != ".." && $file != ".")
-            if (is_dir($dir."/".$file))
-                Router::autoload($dir."/".$file);
-              else
-                include $dir."/".$file;
-            }
-  }
-
-  public function group(string $prefix, $func) {
-    $innerRouter = new Router(false);
-    $func($innerRouter);
-    $innerRouter->setDirectories($this->viewsDirectory, $this->templatesDirectory);
-    foreach ($innerRouter->route as $route=>$routingTo) {
-      $this->route[$prefix.$route] = $routingTo;
-      $this->requestMethod[$prefix.$route] = $innerRouter->requestMethod[$route];
-    }
-  }
-
-    /**
-     * Check if the $middleware method is true
-     *
-     * @param string $middleware
-     * @param $exceptionView
-     * @param $func
-     */
-  public function middleware(string $middleware, $exceptionView, $func) {
-    $innerRouter = new Router(false);
-    $func($innerRouter);
-    $innerRouter->setDirectories($this->viewsDirectory, $this->templatesDirectory);
-    $middlewareStatus = false;
-    if (strpos($middleware, "@") !== false)
-      $middlewareStatus = call_user_func( Router::get_string_between($middleware, "!", "@").'::'.Router::get_string_between($middleware, "@", "") );
-    else
-      $middlewareStatus = call_user_func(Router::get_string_between($middleware, "!", ""));
-    foreach ($innerRouter->route as $route=>$routingTo) {
-      if ($middlewareStatus)
-        $this->route[$route] = $routingTo;
-      else 
-        $this->route[$route] = $exceptionView;  
-      $this->requestMethod[$route] = $innerRouter->requestMethod[$route];
-    }
-  }
-
-  /**
-   * Set Request Methods for the array Router
-   */
-  function setRequestMethods($arr) {
-    foreach ($arr as $k1=>$v1) {
-      $this->requestMethod[$k1] = $v1;
-    }
-  }
-  
-  function addNested($array, $path="") {
-    foreach($array as $v1 => $v2) {
-      if (is_array($v2)) {
-        $this->addNested($v2, $path.$v1."/");
-      } else {
-        // echo $path.$v1;
-        $this->route["/".$path.$v1] = $v2;
-        //array_push($this->route, "/".$path.$v1, $v2);
-      }
-    }
-  }
-
-  function __construct($initLastDirectoryFunction = true) {
-    $route=[];
-    $this->route     =  $route;
-    $this->initLastDirectoryFunction = $initLastDirectoryFunction;
-  }
-
-  function setDirectories($viewsDirectory, $templatesDirectory="../templatesDirectorys") {
-    $this->templatesDirectory  =  $templatesDirectory;
-    $this->viewsDirectory =  $viewsDirectory;
-    if ($this->initLastDirectoryFunction) {
-      self::$lastTemplatesDirectory = $templatesDirectory;
-      self::$lastViewsDirectory = $viewsDirectory;
-    }
-  }
-
-    /**
-     * Set the array router
-     * @param $array
-     */
-  function set($array) {
-    $this->route = array_merge($this->route, $array);
-  }
-
-  function route() {
-    global $_ROUTEVAR;
-    $route     =  $this->route;
-    $templatesDirectory  =  $this->templatesDirectory;
-    $viewsDirectory =  $this->viewsDirectory;
-
-    $error404 = false;
-    $request = str_replace("?".Router::get_string_between($_SERVER['REQUEST_URI'], "?", ""), "", $_SERVER['REQUEST_URI']);
-    $genrequest = $request;
-
-    $method = $_SERVER['REQUEST_METHOD'];
-
-    foreach($route as $url=>$view) {
-  
-      if(preg_match_all('#^' . $url . '$#', $request, $matches)) {
-        foreach ($matches as $key=>$val)
-            $_ROUTEVAR[$key] = $val[0];
-          
-            $methods = ["post", "delete", "put", "connect", "trace", "options"];
-            foreach($methods as $meth) {
-              if($method===strtoupper($meth) && isset($this->requestMethod[$url][$meth])) {
-
-                $this->load($this->requestMethod[$url][$meth] ,  $viewsDirectory.((!is_callable($this->requestMethod[$url][$meth])) ? $this->requestMethod[$url][$meth] : ""), $this);
-                return 0;
-              }
-            }
-            $this->load($view, $viewsDirectory.((!is_callable($view)) ? $view : ""), $this);
+    private $routes;
+    private $includeDirectory;
+    private $namespace = "\\";
+    private $paramsInterceptor;
+    
+    public function __construct() {
+        $this->routes = [];
+        $this->includeDirectory = './';
+        $this->matchInterceptor = function($matches){
+            $body = "";
+            if (defined('STDIN'))
+                $body = stream_get_contents(STDIN);
+            $request = new Request($body, $matches["routeVars"]);
+            $response = new Response;
             
-          return 0;
-        
-
-      }
-    
-    }
-    
-    if (!array_key_exists($genrequest, $route))
-      $error404 = true;
-    if($error404) {
-      header('HTTP/1.1 404 Not Found');
-      include $viewsDirectory.$route["@__404__@"];
-      return 404;
+            return [$request, $response]; // Return params or false (intercepts)
+        };
     }
 
-
-  }
-
-
-    
-    public static function get_string_between($string, $start, $end){
-        $string = ' ' . $string;
-        $ini = strpos($string, $start);
-        if ($ini == 0) return '';
-        $ini += strlen($start);
-        if ($end=="") {
-          return substr($string, $ini, strlen($string));
+    public function run() {
+        $requestMethod = $_SERVER['REQUEST_METHOD'];
+        foreach ($this->routes as $path=>$route) {
+            $matches = $this->matches($path);
+            if ($matches !== false && isset($route[$requestMethod])) {
+                $currentRoute = $route[$requestMethod];
+                
+                $params = ($this->matchInterceptor)($matches);
+                if ($params !== false) {
+                    $out = $this->invoke($currentRoute, array_merge($params, $matches['routeVars']));
+                    if (is_string($out))
+                        echo $out;
+                    else if ($out == null) {
+                    } else {
+                        header('Content-Type: application/json');
+                        echo json_encode($out);
+                    }
+                    return true;
+                }
+            }
         }
-        $len = strpos($string, $end, $ini) - $ini;
-        return substr($string, $ini, $len);
+        return false;
     }
-   
 
+    public function matches($url){
+        $request = strtok($_SERVER["REQUEST_URI"], '?');
+        $matches = [];
 
-    public function load($view, $require, $parent=false) {
-	  global $_ROUTEVAR;
-	  
-      if ($require !== $parent->viewsDirectory."@") {
-        if (is_callable($view)) {
-			$out = $view();
-			if (is_array($out) && function_exists("json_decode")) {
-				header('Content-Type: application/json');
-				echo json_encode($out);
-			} else
-				echo $out;
-		} else
-            if (strpos($view, "!") !== false) {
-				$out = "";
-              if (strpos($view, "@") !== false)
-			  	$out = call_user_func(  $this->namespace.Router::get_string_between($view, "!", "@").'::'.Router::get_string_between($view, "@", "") );
-              else
-				$out = call_user_func(Router::get_string_between($view, "!", ""));
+        if(preg_match_all('#^' . $url . '$#', $request, $matches)) {
+            $routeVars = [];
+            foreach ($matches as $key=>$val) {
+                if (isset($val[0]) && $val[0] != $request)
+                    $routeVars[$key] = $val[0];
+            }
+            return [
+                'routeVars' => $routeVars,
+                'url'       => $url,
+                'matches'   => $matches
+            ];
+        }
 
-			  if (is_array($out) && function_exists("json_decode")) {
-				header('Content-Type: application/json');
-				  echo json_encode($out);
-			  } else {
-				  echo $out;
-			  }
-            } else {
-              require $require;
+        return false;
+    }
+
+    public function invoke($route, $params = []){
+        if (is_callable($route)) {
+            return call_user_func_array($route, $params);
+        } else if(
+            is_string($route) &&
+            substr($route, 0, 1) === '!'
+        ) {
+            call_user_func(str_replace("!", "", $route));
+        } else if (
+            is_string($route) &&
+            strpos($route, "@") !== false
+        ) {
+            $parts = explode("@", $route);
+            $clazz  = $parts[0];
+            if (substr($clazz, 0, 1) !== '\\') {
+                $clazz = $this->namespace.$clazz;
+            }
+
+            $method = $parts[1];
+            
+            if (is_callable([$clazz, $method])) {
+                if ((new \ReflectionMethod($clazz, $method))->isStatic()) {
+                    return call_user_func_array([$clazz, $method], $params);
+                } else {
+                    return call_user_func_array([new $clazz(), $method], $params);
+                }
             }
         } else {
-          if ($parent !== false) {
-            header('HTTP/1.1 404 Not Found');
-            include $parent->viewsDirectory.$parent->route["@__404__@"];
-          }
+            return (include $this->includeDirectory.'/'.$route);
         }
     }
 
+    public function addRoute($route, $methods, $callable){
+        if (!isset($this->routes[$route]))
+            $this->routes[$route] = [];
+        if (strpos($methods, "|") !== false) {
+            foreach (explode("|", $methods) as $method)
+                $this->routes[$route][$method] = $callable;
+        } else
+            $this->routes[$route][$methods] = $callable;
 
-    function setPageNotFound($func) {
-      $this->route["@__404__@"] = $func;
+        return $this;
     }
 
-	function all($route, $func) {
-		$this->route[$route] = $func;
-		return $this;
-	}
-
-    function post($route, $func) {
-      if (!isset($this->requestMethod[$route])) $this->requestMethod[$route] = [];
-      if (!isset($this->route[$route]))
-        $this->route[$route] = "@";
-		$this->requestMethod[$route]["post"] = $func;
-		return $this;
+    public function get($route, $callable){
+        return $this->addRoute($route, 'GET', $callable);
     }
+    public function post($route, $callable){
+        return $this->addRoute($route, 'POST', $callable);
+    }
+    public function put($route, $callable){
+        return $this->addRoute($route, 'PUT', $callable);
+    }
+    public function patch($route, $callable){
+        return $this->addRoute($route, 'PATCH', $callable);
+    }
+    public function delete($route, $callable){
+        return $this->addRoute($route, 'DELETE', $callable);
+    }
+
+    public function setIncludeDirectory($includeDirectory){
+        $this->includeDirectory = $includeDirectory;
+        return $this;
+    }
+
+    public function setMatchInterceptor($matchInterceptor){
+        $this->matchInterceptor = $matchInterceptor;
+        return $this;
+    }
+
+    public function setNamespace($namespace){
+        $this->namespace = $namespace."\\";
+        return $this;
+    }
+
+
   
-    function get($route, $func) {
-      if (!isset($this->requestMethod[$route])) $this->requestMethod[$route] = [];
-      $this->route[$route] = $func;
-	  $this->requestMethod[$route]["get"] = $func;
-	  return $this;
-    }
-  
-    function delete($route, $func) {
-      if (!isset($this->requestMethod[$route])) $this->requestMethod[$route] = [];
-      if (!isset($this->route[$route]))
-        $this->route[$route] = "@";
-	  $this->requestMethod[$route]["delete"] = $func;
-	  return $this;
-    }
-  
-    function put($route, $func) {
-      if (!isset($this->route[$route]))
-        $this->route[$route] = "@";
-      $this->requestMethod[$route] = ["put"=>$func];
-	  return $this;
-	}
-  
-    function trace($route, $func) {
-      if (!isset($this->route[$route]))
-        $this->route[$route] = "@";
-      $this->requestMethod[$route] = ["trace"=>$func];
-	  return $this;
-	}
-
-    function connect($route, $func) {
-      if (!isset($this->route[$route]))
-        $this->route[$route] = "@";
-	  $this->requestMethod[$route] = ["connect"=>$func];
-	  return $this;
-    }
-
-    public static function view($templatesDirectory_name, $vars=false) {
-        if ($vars !== false) {
-            foreach($vars as $key=>$val){
-                global ${$key};
-                ${$key} = $val;
-            }
-        }
-        include Router::$lastViewsDirectory."/".$templatesDirectory_name.".php";
-    }
-
-    public static function tmpl($templatesDirectory_name, $vars=false) {
-        if ($vars !== false) {
-            foreach($vars as $key=>$val){
-                global ${$key};
-                ${$key} = $val;
-            }
-        }
-        include Router::$lastTemplatesDirectory.$templatesDirectory_name.".php";
-    }
-
-
-}
-
-function tmpl($templatesDirectory_name, $vars=false) {
-  Router::tmpl($templatesDirectory_name, $vars);
-}
-
-function view($templatesDirectory_name, $vars=false) {
-   Router::view($templatesDirectory_name, $vars);
 }

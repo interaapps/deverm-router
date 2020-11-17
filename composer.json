@@ -1,18 +1,18 @@
 {
     "name": "interaapps/deverm",
-    "version": "1.0",
+    "version": "5.0",
     "type": "library",
     "authors": [
         {
             "name": "JulianFun123",
-            "email": "julianfun123@yahoo.com"
+            "email": "julian@gojani.xyz"
         }
     ],
     "require": {
     },
     "autoload": {
         "psr-4": {
-            "modules\\deverm\\": "./"
+            "de\\interaapps\\ulole\\router": "./"
         }
     }
 }
