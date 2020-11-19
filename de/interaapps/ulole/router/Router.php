@@ -26,17 +26,7 @@ class Router {
 
     public function run() {
         $requestMethod = $_SERVER['REQUEST_METHOD'];
-        
-        $intercepted = false;
-        foreach ($this->beforeInterceptor as $interceptorPath => $beforeInterceptorCallable) {
-            $interceptorMatches = $this->matches($interceptorPath);
-            if ($interceptorMatches !== false) {
-                $params = ($this->matchProcessor)($interceptorMatches);
-                $interceptorResult = $beforeInterceptorCallable(...$params);
-                if ($interceptorResult !== null)
-                    $intercepted = $interceptorResult;
-            }
-        }
+    
 
         foreach ($this->routes as $path=>$route) {
             $matches = $this->matches($path);
@@ -44,7 +34,15 @@ class Router {
                 $currentRoute = $route[$requestMethod];
                 
                 $params = ($this->matchProcessor)($matches);
-                
+                $intercepted = false;
+                foreach ($this->beforeInterceptor as $interceptorPath => $beforeInterceptorCallable) {
+                    $interceptorMatches = $this->matches($interceptorPath);
+                    if ($interceptorMatches !== false) {
+                        $interceptorResult = $beforeInterceptorCallable(...$params);
+                        if ($interceptorResult !== null)
+                            $intercepted = $interceptorResult;
+                    }
+                }
                 if ($params !== false && !$intercepted) {
                     $out = $this->invoke($currentRoute, array_merge($params, $matches['routeVars']));
                     if (is_string($out))
