@@ -6,11 +6,14 @@ class Router {
     private $includeDirectory;
     private $namespace = "\\";
     private $paramsInterceptor;
+    private $notFound = null;
+    private $beforeInterceptor;
     
     public function __construct() {
         $this->routes = [];
         $this->includeDirectory = './';
-        $this->matchInterceptor = function($matches){
+        $this->beforeInterceptor = [];
+        $this->matchProcessor = function($matches){
             $body = "";
             if (defined('STDIN'))
                 $body = stream_get_contents(STDIN);
@@ -23,18 +26,31 @@ class Router {
 
     public function run() {
         $requestMethod = $_SERVER['REQUEST_METHOD'];
+        
+        $intercepted = false;
+        foreach ($this->beforeInterceptor as $interceptorPath => $beforeInterceptorCallable) {
+            $interceptorMatches = $this->matches($interceptorPath);
+            if ($interceptorMatches !== false) {
+                $params = ($this->matchProcessor)($interceptorMatches);
+                $interceptorResult = $beforeInterceptorCallable(...$params);
+                if ($interceptorResult !== null)
+                    $intercepted = $interceptorResult;
+            }
+        }
+
         foreach ($this->routes as $path=>$route) {
             $matches = $this->matches($path);
             if ($matches !== false && isset($route[$requestMethod])) {
                 $currentRoute = $route[$requestMethod];
                 
-                $params = ($this->matchInterceptor)($matches);
-                if ($params !== false) {
+                $params = ($this->matchProcessor)($matches);
+                
+                if ($params !== false && !$intercepted) {
                     $out = $this->invoke($currentRoute, array_merge($params, $matches['routeVars']));
                     if (is_string($out))
                         echo $out;
                     else if ($out == null) {
-                    } else {
+                    } else if (is_array($out) || is_object($out)) {
                         header('Content-Type: application/json');
                         echo json_encode($out);
                     }
@@ -42,6 +58,9 @@ class Router {
                 }
             }
         }
+        // Page not found
+        header('HTTP/1.1 404 Not Found');
+        $this->invoke($this->notFound);
         return false;
     }
 
@@ -65,19 +84,19 @@ class Router {
         return false;
     }
 
-    public function invoke($route, $params = []){
-        if (is_callable($route)) {
-            return call_user_func_array($route, $params);
+    public function invoke($callable, $params = []){
+        if (is_callable($callable)) {
+            return call_user_func_array($callable, $params);
         } else if(
-            is_string($route) &&
-            substr($route, 0, 1) === '!'
+            is_string($callable) &&
+            substr($callable, 0, 1) === '!'
         ) {
-            call_user_func(str_replace("!", "", $route));
+            call_user_func(str_replace("!", "", $callable));
         } else if (
-            is_string($route) &&
-            strpos($route, "@") !== false
+            is_string($callable) &&
+            strpos($callable, "@") !== false
         ) {
-            $parts = explode("@", $route);
+            $parts = explode("@", $callable);
             $clazz  = $parts[0];
             if (substr($clazz, 0, 1) !== '\\') {
                 $clazz = $this->namespace.$clazz;
@@ -93,7 +112,7 @@ class Router {
                 }
             }
         } else {
-            return (include $this->includeDirectory.'/'.$route);
+            return (include $this->includeDirectory.'/'.$callable);
         }
     }
 
@@ -125,13 +144,22 @@ class Router {
         return $this->addRoute($route, 'DELETE', $callable);
     }
 
+    public function notFound($notFound){
+        $this->notFound = $notFound;
+    }
+
+    public function before($route, $callable){
+        $this->beforeInterceptor[$route] = $callable;
+        return $this;
+    }
+
     public function setIncludeDirectory($includeDirectory){
         $this->includeDirectory = $includeDirectory;
         return $this;
     }
 
-    public function setMatchInterceptor($matchInterceptor){
-        $this->matchInterceptor = $matchInterceptor;
+    public function setMatchProcessor($matchProcessor){
+        $this->matchProcessor = $matchProcessor;
         return $this;
     }
 

@@ -5,10 +5,12 @@ class Request {
     private $body;
     private $routeVars;
     private $params = null;
+    private $attributes;
 
     public function __construct($body, $routeVars) {
         $this->body = $body;
         $this->routeVars = $routeVars;
+        $this->attributes = [];
     }
 
     public function body(){
@@ -93,6 +95,20 @@ class Request {
 
     public function getHost() {
         return $_SERVER["HTTP_HOST"];
+    }
+
+    public function attrib($key, $value=null){
+        if ($value !== null) {
+            $this->attributes[$key] = $value;
+            return $this;
+        }
+        return $this->attributes[$key];
+    }
+
+
+    public function setAttrib($key, $value){
+        $this->attributes[$key] = $value;
+        return $this;
     }
 
 }

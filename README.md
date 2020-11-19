@@ -34,6 +34,26 @@ $router->get("/test/(.*)", function(Request $req, Response $res, $test = null){
     ]);
 });
 
+$router->notFound(function($req, $res){
+    echo "Not found :.(";
+});
+
+// Before interceptor
+$router->before("/dashboard/(.*)", function($req, $res){
+    if ($loggedIn) {
+        $req->attrib("loggedIn", true);
+    } else {
+        return true; // Intercepts. The notFound page will be called!
+    }
+});
+
+$router->get("/dashboard/bills", function($req, $res){
+    if ($req->attrib("loggedIn")) {
+        echo "Logged in!";
+    }
+});
+
+
 // Running the app
 $router->run();
 ```
