@@ -6,7 +6,7 @@ class Router {
     private $includeDirectory;
     private $namespace = "\\";
     private $paramsInterceptor;
-    private $notFound = null;
+    private $notFound;
     private $beforeInterceptor;
     
     public function __construct() {
@@ -58,7 +58,16 @@ class Router {
         }
         // Page not found
         header('HTTP/1.1 404 Not Found');
-        $this->invoke($this->notFound);
+        if ($this->notFound !== null) {
+            $invoked = $this->invoke($this->notFound, ($this->matchProcessor)(["routeVars"=>[]]));
+            if (is_array($invoked) || is_object($invoked)) {
+                header('Content-Type: application/json');
+                echo json_encode($invoked);
+            } else if ($invoked !== null) {
+                echo $invoked;
+            }
+        } else 
+            echo "Page not found";
         return false;
     }
 

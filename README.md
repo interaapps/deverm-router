@@ -54,6 +54,9 @@ $router->get("/dashboard/bills", function($req, $res){
 });
 
 
+$router->notFound(function($req, $res){
+    return "page not found :(";
+});
 // Running the app
 $router->run();
 ```
@@ -80,6 +83,11 @@ class TestController {
 }
 ```
 
+### Regex examples
+`[a-zA-Z0-9_-]+` `a-z`, `A-Z`, `0-9`, `-`, `_`, `/`<br>
+`([^/]+)` Every char except `/`<br>
+`(.*)` Every char
+(More [here](https://www.al-hiwarnews.com/img/hiwar.pdf))
 ## Updates
 
 ### 5.0 (Rebuild update)
