@@ -1,6 +1,9 @@
 <?php
 namespace de\interaapps\ulole\router;
 
+use de\interaapps\ulole\router\attributes\Controller;
+use de\interaapps\ulole\router\attributes\Route;
+
 class Router {
     private $routes;
     private $includeDirectory;
@@ -131,6 +134,29 @@ class Router {
                 $this->routes[$route][$method] = $callable;
         } else
             $this->routes[$route][$methods] = $callable;
+
+        return $this;
+    }
+
+    /**
+     * REQUIRES PHP 8
+     * @param $clazz
+     * @param string $pathPrefix
+     * @return Router
+     * @throws \ReflectionException
+     */
+    public function addController($clazz){
+        if (!($clazz instanceof \ReflectionClass))
+            $clazz = new \ReflectionClass($clazz);
+        $controller = $clazz->getAttributes(Controller::class);
+        foreach ($clazz->getMethods() as $method) {
+            foreach ($method->getAttributes() as $attribute) {
+                if ($attribute->getName() == Route::class) {
+                    $route = $attribute->newInstance();
+                    $this->addRoute((isset($controller[0]) == null? "" : $controller[0]->newInstance()->pathPrefix ).$route->path, $route->method, $clazz->getName()."@".$method->getName());
+                }
+            }
+        }
 
         return $this;
     }

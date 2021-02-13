@@ -88,6 +88,28 @@ class TestController {
 `([^/]+)` Every char except `/`<br>
 `(.*)` Every char
 (More [here](https://www.al-hiwarnews.com/img/hiwar.pdf))
+
+## Controller with Attributes/Annotations (PHP 8+)
+```php
+<?php
+// TestController.php
+use de\interaapps\ulole\router\attributes\Controller;
+use de\interaapps\ulole\router\attributes\Route;
+
+#[Controller("/hello")] // *Optional pathPrefix
+class TestController {
+    #[Route("/test", method: "GET")] // *Optional method (default: GET)
+    public static function test($req, $res) {
+        return "Hi";
+    }
+}
+
+// index.php
+...
+$router->addController(TestController::class);
+```
+
+
 ## Updates
 
 ### 5.0 (Rebuild update)
