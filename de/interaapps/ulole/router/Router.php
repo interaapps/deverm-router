@@ -11,6 +11,9 @@ class Router {
     private $paramsInterceptor;
     private $notFound;
     private $beforeInterceptor;
+
+    private $instantMatches = false;
+    private $hasInstantMatch = false;
     
     public function __construct() {
         $this->routes = [];
@@ -27,7 +30,9 @@ class Router {
         };
     }
 
-    public function run() {
+    public function run($showNotFound = true) {
+        if ($this->instantMatches && $this->hasInstantMatch) return true;
+
         $requestMethod = $_SERVER['REQUEST_METHOD'];
     
 
@@ -59,6 +64,8 @@ class Router {
                 }
             }
         }
+        if (!$showNotFound)
+            return false;
         // Page not found
         header('HTTP/1.1 404 Not Found');
         if ($this->notFound !== null) {
@@ -113,8 +120,8 @@ class Router {
             }
 
             $method = $parts[1];
-            
-            if (is_callable([$clazz, $method])) {
+
+            if (class_exists($clazz) && (new \ReflectionClass($clazz))->hasMethod($method)) {
                 if ((new \ReflectionMethod($clazz, $method))->isStatic()) {
                     return call_user_func_array([$clazz, $method], $params);
                 } else {
@@ -127,6 +134,15 @@ class Router {
     }
 
     public function addRoute($route, $methods, $callable){
+        if ($this->instantMatches && $this->hasInstantMatch) return $this;
+        if ($this->instantMatches){
+            $match = $this->matches($route);
+            if ($match !== false) {
+                if ($this->run(false)) {
+                    $this->hasInstantMatch = true;
+                }
+            }
+        }
         if (!isset($this->routes[$route]))
             $this->routes[$route] = [];
         if (strpos($methods, "|") !== false) {
@@ -143,9 +159,10 @@ class Router {
      * @param $clazz
      * @param string $pathPrefix
      * @return Router
-     * @throws \ReflectionException
      */
     public function addController($clazz){
+        if ($this->instantMatches && $this->hasInstantMatch) return $this;
+
         if (!($clazz instanceof \ReflectionClass))
             $clazz = new \ReflectionClass($clazz);
         $controller = $clazz->getAttributes(Controller::class);
@@ -153,7 +170,7 @@ class Router {
             foreach ($method->getAttributes() as $attribute) {
                 if ($attribute->getName() == Route::class) {
                     $route = $attribute->newInstance();
-                    $this->addRoute((isset($controller[0]) == null? "" : $controller[0]->newInstance()->pathPrefix ).$route->path, $route->method, $clazz->getName()."@".$method->getName());
+                    $this->addRoute((isset($controller[0]) == null? "" : $controller[0]->newInstance()->pathPrefix ).$route->path, $route->method, "\\".$clazz->getName()."@".$method->getName());
                 }
             }
         }
@@ -201,6 +218,11 @@ class Router {
         return $this;
     }
 
+    public function setInstantMatches(bool $instantMatches): Router
+    {
+        $this->instantMatches = $instantMatches;
+        return $this;
+    }
 
-  
+
 }

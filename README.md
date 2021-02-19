@@ -106,6 +106,9 @@ class TestController {
 
 // index.php
 ...
+
+// Experimental: This might makes some huge route initialization faster because it checks the link on addController or addMethod call and not on run(). It also cancels further addMethod's or addController's on match 
+$router->setInstantMatches(true);
 $router->addController(TestController::class);
 ```
 
