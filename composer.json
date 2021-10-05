@@ -1,6 +1,6 @@
 {
     "name": "interaapps/deverm",
-    "version": "5.0.4",
+    "version": "5.0.5",
     "type": "library",
     "authors": [
         {
@@ -9,7 +9,8 @@
         }
     ],
     "require": {
-    	"php": ">=7.0.0"
+    	"php": ">=8.0.0",
+        "interaapps/jsonplus": "^1.0"
     },
     "autoload": {
         "psr-4": {

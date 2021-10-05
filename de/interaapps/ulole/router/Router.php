@@ -1,19 +1,21 @@
 <?php
 namespace de\interaapps\ulole\router;
 
+use de\interaapps\jsonplus\JSONPlus;
 use de\interaapps\ulole\router\attributes\Controller;
 use de\interaapps\ulole\router\attributes\Route;
 
 class Router {
-    private $routes;
-    private $includeDirectory;
-    private $namespace = "\\";
-    private $paramsInterceptor;
+    private array $routes;
+    private string $includeDirectory;
+    private string $namespace = "\\";
     private $notFound;
-    private $beforeInterceptor;
+    private array $beforeInterceptor;
 
-    private $instantMatches = false;
-    private $hasInstantMatch = false;
+    private bool $instantMatches = false;
+    private bool $hasInstantMatch = false;
+
+    private JSONPlus $jsonPlus;
     
     public function __construct() {
         $this->routes = [];
@@ -23,11 +25,12 @@ class Router {
             $body = "";
             if (defined('STDIN'))
                 $body = stream_get_contents(STDIN);
-            $request = new Request($body, $matches["routeVars"]);
+            $request = new Request($this, $body, $matches["routeVars"]);
             $response = new Response;
             
             return [$request, $response]; // Return params or false (intercepts)
         };
+        $this->jsonPlus = JSONPlus::createDefault();
     }
 
     public function run($showNotFound = true) {
@@ -58,7 +61,7 @@ class Router {
                     else if ($out == null) {
                     } else if (is_array($out) || is_object($out)) {
                         header('Content-Type: application/json');
-                        echo json_encode($out);
+                        echo $this->jsonPlus->toJson($out);
                     }
                     return true;
                 }
@@ -72,7 +75,7 @@ class Router {
             $invoked = $this->invoke($this->notFound, ($this->matchProcessor)(["routeVars"=>[]]));
             if (is_array($invoked) || is_object($invoked)) {
                 header('Content-Type: application/json');
-                echo json_encode($invoked);
+                echo $this->jsonPlus->toJson($invoked);
             } else if ($invoked !== null) {
                 echo $invoked;
             }
@@ -224,5 +227,12 @@ class Router {
         return $this;
     }
 
+    public function setJsonPlus(JSONPlus $jsonPlus): Router {
+        $this->jsonPlus = $jsonPlus;
+        return $this;
+    }
 
+    public function getJsonPlus(): JSONPlus {
+        return $this->jsonPlus;
+    }
 }

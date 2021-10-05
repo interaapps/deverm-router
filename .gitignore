@@ -1,3 +1,5 @@
 /testing
 .idea
 *.iml
+modules
+vendors

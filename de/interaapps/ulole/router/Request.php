@@ -1,15 +1,17 @@
 <?php
 namespace de\interaapps\ulole\router;
 
+use de\interaapps\jsonplus\JSONPlus;
+
 class Request {
-    private $body;
-    private $routeVars;
     private $params = null;
     private $attributes;
 
-    public function __construct($body, $routeVars) {
-        $this->body = $body;
-        $this->routeVars = $routeVars;
+    public function __construct(
+        private Router $router,
+        private $body,
+        private $routeVars
+    ) {
         $this->attributes = [];
     }
 
@@ -17,8 +19,8 @@ class Request {
         return $this->body;
     }
 
-    public function json(){
-        return json_decode($this->body);
+    public function json($type=null){
+        return $this->router->getJsonPlus()->fromJson($this->body, $type);
     }
 
     public function getRouteVar($routeVar){
@@ -30,7 +32,7 @@ class Request {
             $this->params = $_POST;
 
             if (isset($_SERVER["CONTENT_TYPE"]) && strpos($_SERVER["CONTENT_TYPE"], "application/json") !== false){
-                $this->params = (array) json_decode(file_get_contents('php://input'), true);
+                $this->params = (array) $this->router->getJsonPlus()->fromJson(file_get_contents('php://input'), true);
             }
         }
         

@@ -1,16 +1,11 @@
-
-        {
-            "init_scripts": [
-        
-            ],
-            "cli_scripts": {
-        
-            },
-            "packages": {
-                
-            },
-            "directnamespaces": {
-                
-            }
-        }
-        
+{
+    "namespaceBindings": {
+        "de\\interaapps\\jsonplus": ".\/modules\/interaapps-jsonplus\/src\/main\/de\/interaapps\/jsonplus",
+        "de\\interaapps\\ulole\\router": ".\/de\/interaapps\/ulole\/router"
+    },
+    "directNamespaceBindings": {},
+    "modules": {
+        "interaapps\/jsonplus": "1.0-pre",
+        "deverm": "5.0.5"
+    }
+}

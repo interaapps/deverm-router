@@ -1,18 +1,14 @@
 {
     "name": "deverm",
-    "version": "5.0.4",
-    "description": "",
-    "author": "",
-    "keywords": [
-        ""
-    ],
-    "modules": {},
-    "namespace_bindings": {
-    	"de\\interaapps\\ulole\\router": "de/interaapps/ulole/router"
+    "version": "5.0.5",
+    "repositories": [],
+    "run": {},
+    "build": {},
+    "serve": {},
+    "modules": {
+        "interaapps\/jsonplus": "1.0.0"
     },
-    "directnamespaces": {
-    	"de\\interaapps\\ulole\\router\\Router": "modules/deverm/de/interaapps/ulole/router/Router.php",
-    	"de\\interaapps\\ulole\\router\\Response": "modules/deverm/de/interaapps/ulole/router/Response.php",
-    	"de\\interaapps\\ulole\\router\\Request": "modules/deverm/de/interaapps/ulole/router/Request.php"
+    "namespace_bindings": {
+        "de\\interaapps\\ulole\\router": "de\/interaapps\/ulole\/router"
     }
 }
