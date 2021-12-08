@@ -1,12 +1,12 @@
 {
     "name": "deverm",
-    "version": "5.0.5",
+    "version": "5.0.6",
     "repositories": [],
     "run": {},
     "build": {},
     "serve": {},
     "modules": {
-        "interaapps\/jsonplus": "1.0.0"
+        "interaapps\/jsonplus": "1.0.4"
     },
     "namespace_bindings": {
         "de\\interaapps\\ulole\\router": "de\/interaapps\/ulole\/router"

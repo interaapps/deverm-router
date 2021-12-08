@@ -10,5 +10,6 @@ class Route
     public function __construct($path, $method = "GET")
     {
         $this->path = $path;
+        $this->method = $method;
     }
 }
