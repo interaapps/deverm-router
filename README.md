@@ -9,30 +9,24 @@ use de\interaapps\ulole\router\Router;
 use de\interaapps\ulole\router\Request;
 use de\interaapps\ulole\router\Response;
 
+// Set root directory of the project
 chdir('..'); 
 $router = new Router;
 
-// Set include start directory
-$router->setIncludeDirectory("resources/views");
+// Using method or function
+$router->get("/", TestController::test(...));
+$router->get("/test", test(...));
 
-$router->get("/", "homepage.php");
-
-// Using Controller (Classes).
-$router->get("/", "app\\controller\\TestController@test");
-
-// or 
-$router->setNamespace("/test", "app\\controller");
-$router->get("/test", "TestController@test");
-
-// Ignoring namespace
-$router->get("/ignore", '\TestController@test');
-
-// Using closure
+// Using anonymous function
 $router->get("/test/(.*)", function(Request $req, Response $res, $test = null){
     $res->json([
         "given_test" => $test // or $req->getRouteVar(0) 
     ]);
 });
+
+// Including php files
+$router->setIncludeDirectory("resources/views");
+$router->get("/", "homepage.php");
 
 $router->notFound(function($req, $res){
     echo "Not found :.(";
@@ -57,10 +51,48 @@ $router->get("/dashboard/bills", function($req, $res){
 $router->notFound(function($req, $res){
     return "page not found :(";
 });
+
+// If using method. (The three dots are a special syntax from php 8.1)
+$router->notFound(NotFoundHandler::handle(...));
+
 // Running the app
 $router->run();
 ```
 
+## Using controllers
+```php
+<?php
+use de\interaapps\ulole\router\attributes\Controller;
+use de\interaapps\ulole\router\attributes\Route;
+use de\interaapps\ulole\router\Request;
+use de\interaapps\ulole\router\Response;
+
+#[Controller("/users")]
+class UserController {
+    #[Route("/[0-9]*", method: 'GET')]
+    public function getUser(Request $req, Response $res, int $id) {
+        return User::table()->where("id", $id)->first();
+    }
+    
+    #[Route("", method: 'POST')]
+    public function getUser(Request $req, Response $res) {
+        // Get Post request JSON
+        $request = $req->json(NewUserRequest::class);
+        $user = (new User())
+            ->setName($request->name)
+            ->setPassword($request->password)
+            ->save();
+            
+        return $user->id;
+    }
+}
+
+// NewUserRequest.php
+class NewUserRequest {
+    public string name;
+    public string password;
+}
+```
 
 
 ### public/.htaccess
@@ -71,84 +103,8 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^(.+)$ index.php [QSA,L]
 ```
 
-### app/controller/TestController.php
-```php
-<?php
-namespace app\controller;
-
-class TestController {
-    public static function test($req, $res){
-        return "yep";
-    }
-}
-```
-
 ### Regex examples
 `[a-zA-Z0-9_-]+` `a-z`, `A-Z`, `0-9`, `-`, `_`, `/`<br>
 `([^/]+)` Every char except `/`<br>
 `(.*)` Every char
 (More [here](https://www.al-hiwarnews.com/img/hiwar.pdf))
-
-## Controller with Attributes/Annotations (PHP 8+)
-```php
-<?php
-// TestController.php
-use de\interaapps\ulole\router\attributes\Controller;
-use de\interaapps\ulole\router\attributes\Route;
-
-#[Controller("/hello")] // *Optional pathPrefix
-class TestController {
-    #[Route("/test", method: "GET")] // *Optional method (default: GET)
-    public static function test($req, $res) {
-        return "Hi";
-    }
-}
-
-// index.php
-...
-
-// Experimental: This might makes some huge route initialization faster because it checks the link on addController or addMethod call and not on run(). It also cancels further addMethod's or addController's on match 
-$router->setInstantMatches(true);
-$router->addController(TestController::class);
-```
-
-
-## Updates
-
-### 5.0 (Rebuild update)
-```
-Rebuild EVERYTHING
-```
-
-### 2.2
-
-```
-You can now give variables to the view method ( view("view.php", ["variable", "value"]) )
-```
-
-### 2.1
-
-```
-Fixed bugs
-```
-
-### 2.0
-
-```
-Made everything nicer.
-Autoload function, new Routevar system with regex, better function support for routes and more.
-```
- 
-### 1.3
-
-```
-Fixed bugs. Added Method Routing without without classes.
-Changed route construct. (You have to set the views-dir first [new router($views_dir, $templates_dir)])
-```
-
-### 1.2
-
-```
-Fixed bugs. Added Method Routing.
-Added Request Methods
-```

@@ -19,7 +19,12 @@ class Request {
         return $this->body;
     }
 
-    public function json($type=null){
+    /**
+     * @template T
+     * @param class-string<T>|null $type
+     * @return T
+     */
+    public function json(string $type = null) : mixed {
         return $this->router->getJsonPlus()->fromJson($this->body, $type);
     }
 

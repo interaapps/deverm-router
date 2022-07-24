@@ -4,12 +4,10 @@ namespace de\interaapps\ulole\router\attributes;
 #[\Attribute]
 class Route
 {
-    public $path;
-    public $method = "GET";
 
-    public function __construct($path, $method = "GET")
+    public function __construct(
+        public $path,
+        public $method = "GET")
     {
-        $this->path = $path;
-        $this->method = $method;
     }
 }

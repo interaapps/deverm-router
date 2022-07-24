@@ -1,16 +1,18 @@
 <?php
 namespace de\interaapps\ulole\router;
 
+use Closure;
 use de\interaapps\jsonplus\JSONPlus;
 use de\interaapps\ulole\router\attributes\Controller;
 use de\interaapps\ulole\router\attributes\Route;
+use ReflectionClass;
 
 class Router {
     private array $routes;
     private string $includeDirectory;
-    private string $namespace = "\\";
     private $notFound;
     private array $beforeInterceptor;
+    private Closure $matchProcessor;
 
     private bool $instantMatches = false;
     private bool $hasInstantMatch = false;
@@ -33,11 +35,10 @@ class Router {
         $this->jsonPlus = JSONPlus::createDefault();
     }
 
-    public function run($showNotFound = true) {
+    public function run(bool $showNotFound = true): bool {
         if ($this->instantMatches && $this->hasInstantMatch) return true;
 
         $requestMethod = $_SERVER['REQUEST_METHOD'];
-    
 
         foreach ($this->routes as $path=>$route) {
             $matches = $this->matches($path);
@@ -84,7 +85,7 @@ class Router {
         return false;
     }
 
-    public function matches($url){
+    public function matches($url) : false|array {
         $request = strtok($_SERVER["REQUEST_URI"], '?');
         $matches = [];
 
@@ -104,34 +105,10 @@ class Router {
         return false;
     }
 
-    public function invoke($callable, $params = []){
+    public function invoke(callable|string $callable, array $params = []){
         if (is_callable($callable)) {
             return call_user_func_array($callable, $params);
-        } else if(
-            is_string($callable) &&
-            substr($callable, 0, 1) === '!'
-        ) {
-            call_user_func(str_replace("!", "", $callable));
-        } else if (
-            is_string($callable) &&
-            strpos($callable, "@") !== false
-        ) {
-            $parts = explode("@", $callable);
-            $clazz  = $parts[0];
-            if (substr($clazz, 0, 1) !== '\\') {
-                $clazz = $this->namespace.$clazz;
-            }
-
-            $method = $parts[1];
-
-            if (class_exists($clazz) && (new \ReflectionClass($clazz))->hasMethod($method)) {
-                if ((new \ReflectionMethod($clazz, $method))->isStatic()) {
-                    return call_user_func_array([$clazz, $method], $params);
-                } else {
-                    return call_user_func_array([new $clazz(), $method], $params);
-                }
-            }
-        } else {
+        } else if (is_string($callable)) {
             return (include $this->includeDirectory.'/'.$callable);
         }
     }
@@ -158,22 +135,30 @@ class Router {
     }
 
     /**
-     * REQUIRES PHP 8
-     * @param $clazz
-     * @param string $pathPrefix
-     * @return Router
+     * @return $this
+     * @throws Null
      */
-    public function addController($clazz){
-        if ($this->instantMatches && $this->hasInstantMatch) return $this;
+    public function addController(mixed... $objects): Router {
+        foreach ($objects as $object) {
+            if ($this->instantMatches && $this->hasInstantMatch) return $this;
 
-        if (!($clazz instanceof \ReflectionClass))
-            $clazz = new \ReflectionClass($clazz);
-        $controller = $clazz->getAttributes(Controller::class);
-        foreach ($clazz->getMethods() as $method) {
-            foreach ($method->getAttributes() as $attribute) {
-                if ($attribute->getName() == Route::class) {
-                    $route = $attribute->newInstance();
-                    $this->addRoute((isset($controller[0]) == null? "" : $controller[0]->newInstance()->pathPrefix ).$route->path, $route->method, "\\".$clazz->getName()."@".$method->getName());
+            $clazz = get_class($object);
+
+            if (!($clazz instanceof ReflectionClass))
+                $clazz = new ReflectionClass($clazz);
+            $controller = $clazz->getAttributes(Controller::class);
+
+            foreach ($clazz->getMethods() as $method) {
+                foreach ($method->getAttributes() as $attribute) {
+                    if ($attribute->getName() == Route::class) {
+                        $route = $attribute->newInstance();
+                        $path = "";
+                        if (isset($controller[0]))
+                            $path = $controller[0]->newInstance()->pathPrefix;
+                        $path .= $route->path;
+
+                        $this->addRoute($path, $route->method, $method->getClosure($method->isStatic() ? null : $object));
+                    }
                 }
             }
         }
@@ -181,43 +166,39 @@ class Router {
         return $this;
     }
 
-    public function get($route, $callable){
+    public function get($route, $callable): Router{
         return $this->addRoute($route, 'GET', $callable);
     }
-    public function post($route, $callable){
+    public function post($route, $callable): Router{
         return $this->addRoute($route, 'POST', $callable);
     }
-    public function put($route, $callable){
+    public function put($route, $callable): Router{
         return $this->addRoute($route, 'PUT', $callable);
     }
-    public function patch($route, $callable){
+    public function patch($route, $callable): Router{
         return $this->addRoute($route, 'PATCH', $callable);
     }
-    public function delete($route, $callable){
+    public function delete($route, $callable): Router{
         return $this->addRoute($route, 'DELETE', $callable);
     }
 
-    public function notFound($notFound){
+    public function notFound($notFound): Router{
         $this->notFound = $notFound;
+        return $this;
     }
 
-    public function before($route, $callable){
+    public function before($route, $callable): Router{
         $this->beforeInterceptor[$route] = $callable;
         return $this;
     }
 
-    public function setIncludeDirectory($includeDirectory){
+    public function setIncludeDirectory($includeDirectory): Router{
         $this->includeDirectory = $includeDirectory;
         return $this;
     }
 
-    public function setMatchProcessor($matchProcessor){
+    public function setMatchProcessor($matchProcessor): Router{
         $this->matchProcessor = $matchProcessor;
-        return $this;
-    }
-
-    public function setNamespace($namespace){
-        $this->namespace = $namespace."\\";
         return $this;
     }
 

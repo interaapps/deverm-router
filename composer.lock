@@ -1,0 +1,57 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "4e2e4497a182afa931d79f7534d83c9c",
+    "packages": [
+        {
+            "name": "interaapps/jsonplus",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/interaapps/JSONPlus.git",
+                "reference": "5d11e885adf13e87a2740650ceb70850813c9d25"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/interaapps/JSONPlus/zipball/5d11e885adf13e87a2740650ceb70850813c9d25",
+                "reference": "5d11e885adf13e87a2740650ceb70850813c9d25",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "de\\interaapps\\jsonplus\\": "src/main/de/interaapps/jsonplus"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "authors": [
+                {
+                    "name": "JulianFun123",
+                    "email": "julian@gojani.xyz"
+                }
+            ],
+            "support": {
+                "issues": "https://github.com/interaapps/JSONPlus/issues",
+                "source": "https://github.com/interaapps/JSONPlus/tree/1.0.0"
+            },
+            "time": "2021-10-05T14:53:30+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": ">=8.0.0"
+    },
+    "platform-dev": [],
+    "plugin-api-version": "2.0.0"
+}

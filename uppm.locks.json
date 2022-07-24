@@ -1,11 +1,12 @@
 {
     "namespaceBindings": {
-        "de\\interaapps\\jsonplus": ".\/modules\/interaapps-jsonplus\/src\/main\/de\/interaapps\/jsonplus",
+        "de\\interaapps\\jsonplus": "modules\/interaapps-jsonplus\/src\/main\/de\/interaapps\/jsonplus",
         "de\\interaapps\\ulole\\router": ".\/de\/interaapps\/ulole\/router"
     },
     "directNamespaceBindings": {},
     "modules": {
-        "interaapps\/jsonplus": "1.0-pre",
+        "interaapps\/jsonplus": "1.0.5",
         "deverm": "5.0.5"
-    }
+    },
+    "initScripts": []
 }
