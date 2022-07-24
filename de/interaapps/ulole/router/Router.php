@@ -1,4 +1,5 @@
 <?php
+
 namespace de\interaapps\ulole\router;
 
 use Closure;
@@ -10,7 +11,7 @@ use ReflectionClass;
 class Router {
     private array $routes;
     private string $includeDirectory;
-    private $notFound;
+    private mixed $notFound;
     private array $beforeInterceptor;
     private Closure $matchProcessor;
 
@@ -18,18 +19,18 @@ class Router {
     private bool $hasInstantMatch = false;
 
     private JSONPlus $jsonPlus;
-    
+
     public function __construct() {
         $this->routes = [];
         $this->includeDirectory = './';
         $this->beforeInterceptor = [];
-        $this->matchProcessor = function($matches){
+        $this->matchProcessor = function ($matches) {
             $body = "";
             if (defined('STDIN'))
                 $body = stream_get_contents(STDIN);
             $request = new Request($this, $body, $matches["routeVars"]);
-            $response = new Response;
-            
+            $response = new Response($this);
+
             return [$request, $response]; // Return params or false (intercepts)
         };
         $this->jsonPlus = JSONPlus::createDefault();
@@ -40,11 +41,11 @@ class Router {
 
         $requestMethod = $_SERVER['REQUEST_METHOD'];
 
-        foreach ($this->routes as $path=>$route) {
+        foreach ($this->routes as $path => $route) {
             $matches = $this->matches($path);
             if ($matches !== false && isset($route[$requestMethod])) {
                 $currentRoute = $route[$requestMethod];
-                
+
                 $params = ($this->matchProcessor)($matches);
                 $intercepted = false;
                 foreach ($this->beforeInterceptor as $interceptorPath => $beforeInterceptorCallable) {
@@ -73,49 +74,49 @@ class Router {
         // Page not found
         header('HTTP/1.1 404 Not Found');
         if ($this->notFound !== null) {
-            $invoked = $this->invoke($this->notFound, ($this->matchProcessor)(["routeVars"=>[]]));
+            $invoked = $this->invoke($this->notFound, ($this->matchProcessor)(["routeVars" => []]));
             if (is_array($invoked) || is_object($invoked)) {
                 header('Content-Type: application/json');
                 echo $this->jsonPlus->toJson($invoked);
             } else if ($invoked !== null) {
                 echo $invoked;
             }
-        } else 
+        } else
             echo "Page not found";
         return false;
     }
 
-    public function matches($url) : false|array {
+    public function matches($url): false|array {
         $request = strtok($_SERVER["REQUEST_URI"], '?');
         $matches = [];
 
-        if(preg_match_all('#^' . $url . '$#', $request, $matches)) {
+        if (preg_match_all('#^' . $url . '$#', $request, $matches)) {
             $routeVars = [];
-            foreach ($matches as $key=>$val) {
+            foreach ($matches as $key => $val) {
                 if (isset($val[0]) && $val[0] != $request)
                     $routeVars[$key] = $val[0];
             }
             return [
                 'routeVars' => $routeVars,
-                'url'       => $url,
-                'matches'   => $matches
+                'url' => $url,
+                'matches' => $matches
             ];
         }
 
         return false;
     }
 
-    public function invoke(callable|string $callable, array $params = []){
+    public function invoke(callable|string $callable, array $params = []) {
         if (is_callable($callable)) {
             return call_user_func_array($callable, $params);
         } else if (is_string($callable)) {
-            return (include $this->includeDirectory.'/'.$callable);
+            return (include $this->includeDirectory . '/' . $callable);
         }
     }
 
-    public function addRoute($route, $methods, $callable){
+    public function addRoute(string $route, string $methods, callable|string $callable): Router {
         if ($this->instantMatches && $this->hasInstantMatch) return $this;
-        if ($this->instantMatches){
+        if ($this->instantMatches) {
             $match = $this->matches($route);
             if ($match !== false) {
                 if ($this->run(false)) {
@@ -138,7 +139,7 @@ class Router {
      * @return $this
      * @throws Null
      */
-    public function addController(mixed... $objects): Router {
+    public function addController(mixed...$objects): Router {
         foreach ($objects as $object) {
             if ($this->instantMatches && $this->hasInstantMatch) return $this;
 
@@ -166,44 +167,47 @@ class Router {
         return $this;
     }
 
-    public function get($route, $callable): Router{
+    public function get(string $route, callable|string $callable): Router {
         return $this->addRoute($route, 'GET', $callable);
     }
-    public function post($route, $callable): Router{
+
+    public function post(string $route, callable|string $callable): Router {
         return $this->addRoute($route, 'POST', $callable);
     }
-    public function put($route, $callable): Router{
+
+    public function put(string $route, callable|string $callable): Router {
         return $this->addRoute($route, 'PUT', $callable);
     }
-    public function patch($route, $callable): Router{
+
+    public function patch(string $route, callable|string $callable): Router {
         return $this->addRoute($route, 'PATCH', $callable);
     }
-    public function delete($route, $callable): Router{
+
+    public function delete(string $route, callable|string $callable): Router {
         return $this->addRoute($route, 'DELETE', $callable);
     }
 
-    public function notFound($notFound): Router{
+    public function notFound(callable|string $notFound): Router {
         $this->notFound = $notFound;
         return $this;
     }
 
-    public function before($route, $callable): Router{
+    public function before(string $route, callable $callable): Router {
         $this->beforeInterceptor[$route] = $callable;
         return $this;
     }
 
-    public function setIncludeDirectory($includeDirectory): Router{
+    public function setIncludeDirectory(string $includeDirectory): Router {
         $this->includeDirectory = $includeDirectory;
         return $this;
     }
 
-    public function setMatchProcessor($matchProcessor): Router{
+    public function setMatchProcessor(Closure $matchProcessor): Router {
         $this->matchProcessor = $matchProcessor;
         return $this;
     }
 
-    public function setInstantMatches(bool $instantMatches): Router
-    {
+    public function setInstantMatches(bool $instantMatches): Router {
         $this->instantMatches = $instantMatches;
         return $this;
     }

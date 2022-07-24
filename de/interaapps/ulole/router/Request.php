@@ -1,21 +1,20 @@
 <?php
+
 namespace de\interaapps\ulole\router;
 
-use de\interaapps\jsonplus\JSONPlus;
-
 class Request {
-    private $params = null;
-    private $attributes;
+    private mixed $params = null;
+    private array $attributes;
 
     public function __construct(
-        private Router $router,
-        private $body,
-        private $routeVars
+        private readonly Router $router,
+        private                 $body,
+        private                 $routeVars
     ) {
         $this->attributes = [];
     }
 
-    public function body(){
+    public function body() {
         return $this->body;
     }
 
@@ -24,31 +23,31 @@ class Request {
      * @param class-string<T>|null $type
      * @return T
      */
-    public function json(string $type = null) : mixed {
+    public function json(string $type = null): mixed {
         return $this->router->getJsonPlus()->fromJson($this->body, $type);
     }
 
-    public function getRouteVar($routeVar){
+    public function getRouteVar($routeVar) {
         return $this->routeVars[$routeVar];
     }
 
-    public function getParams(){
+    public function getParams() {
         if ($this->params === null) {
             $this->params = $_POST;
 
-            if (isset($_SERVER["CONTENT_TYPE"]) && strpos($_SERVER["CONTENT_TYPE"], "application/json") !== false){
-                $this->params = (array) $this->router->getJsonPlus()->fromJson(file_get_contents('php://input'), true);
+            if (isset($_SERVER["CONTENT_TYPE"]) && strpos($_SERVER["CONTENT_TYPE"], "application/json") !== false) {
+                $this->params = (array)$this->router->getJsonPlus()->fromJson(file_get_contents('php://input'), true);
             }
         }
-        
+
         return $this->params;
     }
 
-    public function getParam($param){
+    public function getParam($param) {
         return $this->getParams()[$param];
     }
 
-    public function getQuery($query = false){
+    public function getQuery($query = false) {
         if ($query === false)
             return $_GET;
         return $_GET[$query];
@@ -68,12 +67,12 @@ class Request {
 
     public function getRemoteAddress() {
         if (!empty($_SERVER['HTTP_CLIENT_IP']))
-            $ip=$_SERVER['HTTP_CLIENT_IP'];
-         elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
-            $ip=$_SERVER['HTTP_X_FORWARDED_FOR'];
-         else
-            $ip=$_SERVER['REMOTE_ADDR'];
-        return $ip; 
+            $ip = $_SERVER['HTTP_CLIENT_IP'];
+        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
+            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        else
+            $ip = $_SERVER['REMOTE_ADDR'];
+        return $ip;
     }
 
     public function getAcceptedLanguages() {
@@ -84,7 +83,7 @@ class Request {
         return $_SERVER["HTTP_COOKIE"];
     }
 
-    public function getCookie($cookie){
+    public function getCookie($cookie) {
         return $_COOKIE[$cookie];
     }
 
@@ -104,7 +103,7 @@ class Request {
         return $_SERVER["HTTP_HOST"];
     }
 
-    public function attrib($key, $value=null){
+    public function attrib($key, $value = null) {
         if ($value !== null) {
             $this->attributes[$key] = $value;
             return $this;
@@ -113,7 +112,7 @@ class Request {
     }
 
 
-    public function setAttrib($key, $value){
+    public function setAttrib($key, $value) {
         $this->attributes[$key] = $value;
         return $this;
     }

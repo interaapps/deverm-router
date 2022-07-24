@@ -1,13 +1,12 @@
 <?php
+
 namespace de\interaapps\ulole\router\attributes;
 
 #[\Attribute]
-class Route
-{
+class Route {
 
     public function __construct(
         public $path,
-        public $method = "GET")
-    {
+        public $method = "GET") {
     }
 }

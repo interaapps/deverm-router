@@ -1,56 +1,62 @@
 <?php
+
 namespace de\interaapps\ulole\router;
 
 class Response {
-    public function json($object){
+
+    public function __construct(
+        private readonly Router $router,
+    ) {
+    }
+
+    public function json(mixed $object): Response {
         header('Content-Type: application/json');
-        echo json_encode($object);
+        echo $this->router->getJsonPlus()->toJson($object);
         return $this;
     }
 
-    public function setContentType($type) {
-        header('Content-Type: '.$type);
+    public function setContentType(string $type): Response {
+        header('Content-Type: ' . $type);
         return $this;
     }
 
-    public function setCode($code) {
+    public function setCode(int $code): Response {
         http_response_code($code);
         return $this;
     }
 
-    public function setNotFound() {
+    public function setNotFound(): Response {
         header("HTTP/1.0 404 Not Found");
         return $this;
     }
 
-    public function setHeader($header, $value=false) {
+    public function setHeader(string $header, mixed $value = false): Response {
         if ($value === false)
             header($header);
         else
-            header($header.": ".$value);
-        return $this;
-    }
-    
-    public function setHeaders($header) {
-        foreach ($header as $name=>$value)
-            header($name.": ".$value);
+            header($header . ": " . $value);
         return $this;
     }
 
-    public function setCookie($name, $value = "", $expires = 0, $path = "", $domain = "", $secure = false, $httponly = false){
-        setcookie($name, $value, $expires, $path, $domain, $secure, $httponly);
+    public function setHeaders(array $header): Response {
+        foreach ($header as $name => $value)
+            header($name . ": " . $value);
         return $this;
     }
 
-    public function redirect($link, $code=307) {
+    public function setCookie(string $name, string $value = "", int $expiresOrOptions = 0, string $path = "", string $domain = "", bool $secure = false, bool $httponly = false): Response {
+        setcookie($name, $value, $expiresOrOptions, $path, $domain, $secure, $httponly);
+        return $this;
+    }
+
+    public function redirect($link, $code = 307): void {
         @ob_clean();
         http_response_code($code);
-        header("Location: ".$link);
-        echo "<title>Redirecting to ".$link."</title>";
-		echo '<meta http-equiv="refresh" content="0;url='.$link.'">';
-		echo "<script>window.location.replace('",$link,"')</script>";
-        echo "<a href='".$link."'>CLICK HERE</title>";
+        header("Location: " . $link);
+        echo "<title>Redirecting to " . $link . "</title>";
+        echo '<meta http-equiv="refresh" content="0;url=' . $link . '">';
+        echo "<script>window.location.replace('", $link, "')</script>";
+        echo "<a href='" . $link . "'>CLICK HERE</title>";
         exit();
-        return $this;
     }
 }
