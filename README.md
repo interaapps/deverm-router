@@ -140,7 +140,7 @@ use de\interaapps\ulole\router\Response;
 
 // Some parameters will be autoamtically filled by the deverm-router
 $router->get("/test/{test}", function (
-    Request $req,
+    Request $req, // Request and Response will automatically be injected if type is given
     Response $res,
     string $test, // Will be automatically filled to the route variable, because it's the same name
     #[QueryParam] string $test, // Query Parameter like /test/hello?test=example
