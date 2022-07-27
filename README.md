@@ -1,5 +1,11 @@
-# deverm-router 5.1
+# deverm-router 5.2
 Deverm-php-Router is an open-source PHP-router.
+
+```bash
+uppm i deverm
+# Or composer
+composer require interaapps/deverm
+```
 
 ### public/index.php
 ```php
