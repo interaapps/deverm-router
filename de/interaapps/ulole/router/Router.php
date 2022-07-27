@@ -4,9 +4,14 @@ namespace de\interaapps\ulole\router;
 
 use Closure;
 use de\interaapps\jsonplus\JSONPlus;
+use de\interaapps\ulole\router\attributes\Attrib;
+use de\interaapps\ulole\router\attributes\Body;
 use de\interaapps\ulole\router\attributes\Controller;
+use de\interaapps\ulole\router\attributes\QueryParam;
 use de\interaapps\ulole\router\attributes\Route;
+use de\interaapps\ulole\router\attributes\RouteVar;
 use ReflectionClass;
+use ReflectionFunction;
 
 class Router {
     private array $routes;
@@ -20,6 +25,19 @@ class Router {
 
     private JSONPlus $jsonPlus;
 
+    public const REGEX_REPLACES = [
+        "string" => "[^\/]",
+        "f" => "[+-]?([0-9]*[.])?[0-9]",
+        "f+" => "[+]?([0-9]*[.])?[0-9]",
+        "f-" => "-([0-9]*[.])?[0-9]",
+        "i" => "[+\-]?\d",
+        "i+" => "[+]?\d",
+        "i-" => "\-\d",
+        "bool" => "([Tt]rue|[Ff]alse|0|1)",
+        "*" => ".",
+        "any" => ".",
+    ];
+
     public function __construct() {
         $this->routes = [];
         $this->includeDirectory = './';
@@ -31,7 +49,18 @@ class Router {
             $request = new Request($this, $body, $matches["routeVars"]);
             $response = new Response($this);
 
-            return [$request, $response]; // Return params or false (intercepts)
+            return [
+                "request" => [
+                    "type"  => "TYPE",
+                    "class" => Request::class,
+                    "value" => $request
+                ],
+                "response" => [
+                    "type"  => "TYPE",
+                    "class" => Response::class,
+                    "value" => $response
+                ]
+            ];
         };
         $this->jsonPlus = JSONPlus::createDefault();
     }
@@ -48,19 +77,31 @@ class Router {
 
                 $params = ($this->matchProcessor)($matches);
                 $intercepted = false;
+
                 foreach ($this->beforeInterceptor as $interceptorPath => $beforeInterceptorCallable) {
                     $interceptorMatches = $this->matches($interceptorPath);
                     if ($interceptorMatches !== false) {
-                        $interceptorResult = $beforeInterceptorCallable(...$params);
+                        $interceptorResult = $this->invoke($beforeInterceptorCallable, $params);
                         if ($interceptorResult !== null)
                             $intercepted = $interceptorResult;
                     }
                 }
+
                 if ($params !== false && !$intercepted) {
-                    $out = $this->invoke($currentRoute, array_merge($params, $matches['routeVars']));
-                    if (is_string($out))
+                    $vars = $params;
+
+                    foreach ($matches['routeVars'] as $name => $value) {
+                        $vars[] = [
+                            "type"  => "NAME",
+                            "name"  => $name,
+                            "value" => $value
+                        ];
+                    }
+
+                    $out = $this->invoke($currentRoute, $vars);
+
+                    if (is_string($out)) {
                         echo $out;
-                    else if ($out == null) {
                     } else if (is_array($out) || is_object($out)) {
                         header('Content-Type: application/json');
                         echo $this->jsonPlus->toJson($out);
@@ -90,7 +131,7 @@ class Router {
         $request = strtok($_SERVER["REQUEST_URI"], '?');
         $matches = [];
 
-        if (preg_match_all('#^' . $url . '$#', $request, $matches)) {
+        if (preg_match_all($url, $request, $matches)) {
             $routeVars = [];
             foreach ($matches as $key => $val) {
                 if (isset($val[0]) && $val[0] != $request)
@@ -108,14 +149,83 @@ class Router {
 
     public function invoke(callable|string $callable, array $params = []) {
         if (is_callable($callable)) {
-            return call_user_func_array($callable, $params);
+            $refl = new ReflectionFunction($callable);
+            $funcParams = [];
+            foreach ($refl->getParameters() as $parameter) {
+                foreach ($params as $p) {
+                    if ($p["type"] == "TYPE" && $parameter->getType()?->getName() == $p["class"]) {
+                        $funcParams[] = $p["value"];
+                        continue 2;
+                    }
+
+                    if ($p["type"] == "NAME" && $parameter->getName() == $p["name"]) {
+                        $funcParams[] = $p["value"];
+                        continue 2;
+                    }
+
+                    if (count($parameter->getAttributes(Body::class)) > 0) {
+                        $type = $parameter->getType()?->getName();
+                        $body = "";
+                        if (defined('STDIN'))
+                            $body = stream_get_contents(STDIN);
+
+                        if ($type === null || $type == 'string')
+                            $funcParams[] = $body;
+                        else
+                            $funcParams[] = $this->jsonPlus->fromJson($body, $type);
+
+                        continue 2;
+                    }
+
+                    $attribAttributes = $parameter->getAttributes(Attrib::class);
+                    if (count($attribAttributes) > 0) {
+                        $funcParams[] = $params["request"]["value"]->attrib($attribAttributes[0]->newInstance()->name ?? $parameter->getName());
+                        continue 2;
+                    }
+
+                    $queryAttributes = $parameter->getAttributes(QueryParam::class);
+                    if (count($queryAttributes) > 0) {
+                        $funcParams[] = $params["request"]["value"]->getQuery($queryAttributes[0]->newInstance()->name ?? $parameter->getName());
+                        continue 2;
+                    }
+
+                    $routeVarAttributes = $parameter->getAttributes(RouteVar::class);
+                    if (count($routeVarAttributes) > 0) {
+                        $funcParams[] = $params["request"]["value"]->getRouteVar($routeVarAttributes[0]->newInstance()->name ?? $parameter->getName());
+                        continue 2;
+                    }
+                }
+                $funcParams[] = null;
+            }
+
+            return $refl->invokeArgs($funcParams);
         } else if (is_string($callable)) {
             return (include $this->includeDirectory . '/' . $callable);
         }
     }
 
+    private function createRegex(string $route) : string {
+        return "#^" . preg_replace_callback("/\\\{(([A-Za-z0-1_\-+?*\\\]+):)?([A-Za-z0-1_]+)\\\}/", function (array $matches) : string {
+            $type = "string";
+            if ($matches[2] != "")
+                $type = str_replace("\\", "", $matches[2] ?? "string");
+            $name = $matches[3];
+
+            if (str_starts_with($type, "?")) {
+                $replaced = self::REGEX_REPLACES[substr($type, 1)]."*";
+            } else
+                $replaced = self::REGEX_REPLACES[$type]."+";
+
+            return "(?<$name>(" . $replaced . "))";
+        }, preg_quote($route)) . "$#";
+    }
+
     public function addRoute(string $route, string $methods, callable|string $callable): Router {
-        if ($this->instantMatches && $this->hasInstantMatch) return $this;
+        if ($this->instantMatches && $this->hasInstantMatch)
+            return $this;
+
+        $route = $this->createRegex($route);
+
         if ($this->instantMatches) {
             $match = $this->matches($route);
             if ($match !== false) {
@@ -124,9 +234,11 @@ class Router {
                 }
             }
         }
+
         if (!isset($this->routes[$route]))
             $this->routes[$route] = [];
-        if (strpos($methods, "|") !== false) {
+
+        if (str_contains($methods, "|")) {
             foreach (explode("|", $methods) as $method)
                 $this->routes[$route][$method] = $callable;
         } else
@@ -193,7 +305,7 @@ class Router {
     }
 
     public function before(string $route, callable $callable): Router {
-        $this->beforeInterceptor[$route] = $callable;
+        $this->beforeInterceptor[$this->createRegex($route)] = $callable;
         return $this;
     }
 

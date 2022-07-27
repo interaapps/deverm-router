@@ -2,7 +2,9 @@
 
 namespace de\interaapps\ulole\router\attributes;
 
-#[\Attribute]
+use Attribute;
+
+#[Attribute(Attribute::TARGET_METHOD)]
 class Route {
 
     public function __construct(

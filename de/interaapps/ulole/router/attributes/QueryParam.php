@@ -1,12 +1,12 @@
 <?php
-
 namespace de\interaapps\ulole\router\attributes;
 
 use Attribute;
 
-#[Attribute(Attribute::TARGET_CLASS)]
-class Controller {
+#[Attribute(Attribute::TARGET_PARAMETER)]
+class QueryParam {
     public function __construct(
-        public string $pathPrefix = "") {
+        public string|null $name = null
+    ) {
     }
 }

@@ -47,13 +47,13 @@ class Request {
         return $this->getParams()[$param];
     }
 
-    public function getQuery($query = false) {
+    public function getQuery(string|false $query = false) : mixed {
         if ($query === false)
             return $_GET;
-        return $_GET[$query];
+        return $_GET[$query] ?? null;
     }
 
-    public function getUserAgent() {
+    public function getUserAgent() : string {
         return $_SERVER["HTTP_USER_AGENT"];
     }
 
@@ -61,11 +61,11 @@ class Request {
         return $_SERVER["SERVER_NAME"];
     }
 
-    public function getPHPRemoteAddress() {
+    public function getPHPRemoteAddress() : string {
         return $_SERVER["REMOTE_ADDR"];
     }
 
-    public function getRemoteAddress() {
+    public function getRemoteAddress() : string {
         if (!empty($_SERVER['HTTP_CLIENT_IP']))
             $ip = $_SERVER['HTTP_CLIENT_IP'];
         elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
@@ -75,23 +75,23 @@ class Request {
         return $ip;
     }
 
-    public function getAcceptedLanguages() {
+    public function getAcceptedLanguages() : string {
         return $_SERVER["HTTP_ACCEPT_LANGUAGE"];
     }
 
-    public function getHttpCookie() {
+    public function getHttpCookie() : string {
         return $_SERVER["HTTP_COOKIE"];
     }
 
-    public function getCookie($cookie) {
+    public function getCookie($cookie) : mixed {
         return $_COOKIE[$cookie];
     }
 
-    public function getRequestURI() {
+    public function getRequestURI() : string {
         return $_SERVER["REQUEST_URI"];
     }
 
-    public function getServerName() {
+    public function getServerName() : string {
         return $_SERVER["SERVER_NAME"];
     }
 
@@ -99,11 +99,11 @@ class Request {
         return $_SERVER["SERVER_PORT"];
     }
 
-    public function getHost() {
+    public function getHost() : string {
         return $_SERVER["HTTP_HOST"];
     }
 
-    public function attrib($key, $value = null) {
+    public function attrib(string $key, mixed $value = null) : mixed {
         if ($value !== null) {
             $this->attributes[$key] = $value;
             return $this;
@@ -112,7 +112,7 @@ class Request {
     }
 
 
-    public function setAttrib($key, $value) {
+    public function setAttrib(string $key, mixed $value) : Request {
         $this->attributes[$key] = $value;
         return $this;
     }
