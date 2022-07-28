@@ -15,7 +15,7 @@ use de\interaapps\ulole\router\Response;
 
 // Set root directory of the project
 chdir('..'); 
-$router = new Router;
+$router = new Router();
 
 // Using method or function
 $router->get("/", TestController::test(...));
@@ -69,17 +69,19 @@ $router->run();
 <?php
 use de\interaapps\ulole\router\attributes\Controller;
 use de\interaapps\ulole\router\attributes\Route;
+use de\interaapps\ulole\router\attributes\methods\Get;
+use de\interaapps\ulole\router\attributes\methods\Post;
 use de\interaapps\ulole\router\Request;
 use de\interaapps\ulole\router\Response;
 
 #[Controller("/users")]
 class UserController {
-    #[Route("/{i+:id}", method: 'GET')] // You can also use #[Get("/{i+:id}")]
+    #[Get("/{i+:id}")]
     public function getUser(Request $req, Response $res, int $id) {
         return User::table()->where("id", $id)->first();
     }
     
-    #[Route("", method: 'POST')] // You can also use #[Post("")]
+    #[Post]
     public function getUser(Request $req, Response $res, #[Body] NewUserRequest $newUserRequest) {
         $user = (new User())
             ->setName($newUserRequest->name)
@@ -88,6 +90,9 @@ class UserController {
             
         return $user->id;
     }
+    
+    #[Route("/test", method: "GET|POST")]
+    public function multipleMethods() {}
 }
 
 // NewUserRequest.php
