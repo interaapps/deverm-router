@@ -10,9 +10,17 @@ use de\interaapps\ulole\router\attributes\Controller;
 use de\interaapps\ulole\router\attributes\methods\Get;
 use de\interaapps\ulole\router\attributes\methods\Patch;
 use de\interaapps\ulole\router\attributes\methods\Post;
+use de\interaapps\ulole\router\attributes\methods\Put;
 use de\interaapps\ulole\router\attributes\QueryParam;
 use de\interaapps\ulole\router\attributes\Route;
 use de\interaapps\ulole\router\attributes\RouteVar;
+use de\interaapps\ulole\router\attributes\With;
+use de\interaapps\ulole\router\interfaces\ExceptionHandler;
+use de\interaapps\ulole\router\interfaces\Middleware;
+use de\interaapps\ulole\router\interfaces\RequestHandler;
+use de\interaapps\ulole\router\transformers\JSONResponseTransformer;
+use de\interaapps\ulole\router\transformers\ResponseTransformer;
+use Exception;
 use ReflectionClass;
 use ReflectionFunction;
 
@@ -21,7 +29,10 @@ class Router {
     private string $includeDirectory;
     private mixed $notFound;
     private array $beforeInterceptor;
-    private Closure $matchProcessor;
+    private Closure|null $exceptionHandler = null;
+    private array $middlewares = [];
+
+    private array $responseTransformers = [];
 
     private bool $instantMatches = false;
     private bool $hasInstantMatch = false;
@@ -45,26 +56,6 @@ class Router {
         $this->routes = [];
         $this->includeDirectory = './';
         $this->beforeInterceptor = [];
-        $this->matchProcessor = function ($matches) {
-            $body = "";
-            if (defined('STDIN'))
-                $body = stream_get_contents(STDIN);
-            $request = new Request($this, $body, $matches["routeVars"]);
-            $response = new Response($this);
-
-            return [
-                "request" => [
-                    "type"  => "TYPE",
-                    "class" => Request::class,
-                    "value" => $request
-                ],
-                "response" => [
-                    "type"  => "TYPE",
-                    "class" => Response::class,
-                    "value" => $response
-                ]
-            ];
-        };
         $this->jsonPlus = JSONPlus::createDefault();
     }
 
@@ -73,61 +64,90 @@ class Router {
 
         $requestMethod = $_SERVER['REQUEST_METHOD'];
 
+        $body = "";
+        if (defined('STDIN'))
+            $body = stream_get_contents(STDIN);
+
+        $request = new Request($this, $body);
+        $response = new Response($this);
+
+        $defaultParameters = [
+            "request" => [
+                "type"  => "TYPE",
+                "class" => Request::class,
+                "value" => $request
+            ],
+            "response" => [
+                "type"  => "TYPE",
+                "class" => Response::class,
+                "value" => $response
+            ],
+            "router" => [
+                "type"  => "TYPE",
+                "class" => Router::class,
+                "value" => $this
+            ]
+        ];
+
         foreach ($this->routes as $path => $route) {
             $matches = $this->matches($path);
+
             if ($matches !== false && isset($route[$requestMethod])) {
+                $request->setRouteVars($matches["routeVars"]);
+
                 $currentRoute = $route[$requestMethod];
 
-                $params = ($this->matchProcessor)($matches);
                 $intercepted = false;
 
                 foreach ($this->beforeInterceptor as $interceptorPath => $beforeInterceptorCallable) {
                     $interceptorMatches = $this->matches($interceptorPath);
                     if ($interceptorMatches !== false) {
-                        $interceptorResult = $this->invoke($beforeInterceptorCallable, $params);
+                        $interceptorResult = $this->invoke($beforeInterceptorCallable, $defaultParameters);
                         if ($interceptorResult !== null)
                             $intercepted = $interceptorResult;
                     }
                 }
 
-                if ($params !== false && !$intercepted) {
-                    $vars = $params;
-
+                if (!$intercepted) {
                     foreach ($matches['routeVars'] as $name => $value) {
-                        $vars[] = [
+                        $defaultParameters[] = [
                             "type"  => "NAME",
                             "name"  => $name,
                             "value" => $value
                         ];
                     }
 
-                    $out = $this->invoke($currentRoute, $vars);
-
-                    if (is_string($out)) {
-                        echo $out;
-                    } else if (is_array($out) || is_object($out)) {
-                        header('Content-Type: application/json');
-                        echo $this->jsonPlus->toJson($out);
+                    foreach ($this->middlewares as $name => $middleware) {
+                        if (in_array($name, $currentRoute["middlewares"]))
+                            $this->invoke($middleware, $defaultParameters);
                     }
+
+                    echo $this->transformResponse($request, $response, $this->invoke($currentRoute["callable"], $defaultParameters));
+
                     return true;
                 }
             }
         }
         if (!$showNotFound)
             return false;
+
         // Page not found
         header('HTTP/1.1 404 Not Found');
         if ($this->notFound !== null) {
-            $invoked = $this->invoke($this->notFound, ($this->matchProcessor)(["routeVars" => []]));
-            if (is_array($invoked) || is_object($invoked)) {
-                header('Content-Type: application/json');
-                echo $this->jsonPlus->toJson($invoked);
-            } else if ($invoked !== null) {
-                echo $invoked;
-            }
+            echo $this->transformResponse($request, $response, $this->invoke($this->notFound, $defaultParameters));
         } else
             echo "Page not found";
         return false;
+    }
+
+    private function transformResponse(Request $req, Response $res, mixed $body) : mixed {
+        foreach ($this->responseTransformers as $responseTransformer) {
+            $r = $responseTransformer($req, $res, $body);
+            if ($r !== null) {
+                return $r;
+            }
+        }
+        return $body;
     }
 
     public function matches($url): false|array {
@@ -150,7 +170,10 @@ class Router {
         return false;
     }
 
-    public function invoke(callable|string $callable, array $params = []) {
+    /**
+     * @throws Null
+     */
+    public function invoke(callable|string $callable, array $params = [], $exceptionHandling = true) {
         if (is_callable($callable)) {
             $refl = new ReflectionFunction($callable);
             $funcParams = [];
@@ -201,7 +224,19 @@ class Router {
                 $funcParams[] = null;
             }
 
-            return $refl->invokeArgs($funcParams);
+            try {
+                return $refl->invokeArgs($funcParams);
+            } catch (Exception $e) {
+                if ($this->exceptionHandler !== null && $exceptionHandling) {
+                    return $this->invoke($this->exceptionHandler, array_merge($params, [[
+                        "type"  =>"TYPE",
+                        "class" => Exception::class,
+                        "value" => $e
+                    ]]), false);
+                } else {
+                    throw new $e;
+                }
+            }
         } else if (is_string($callable)) {
             return (include $this->includeDirectory . '/' . $callable);
         }
@@ -223,7 +258,7 @@ class Router {
         }, preg_quote($route)) . "$#";
     }
 
-    public function addRoute(string $route, string $methods, callable|string $callable): Router {
+    public function addRoute(string $route, string $methods, callable|RequestHandler|string $callable, array $middlewares = []): Router {
         if ($this->instantMatches && $this->hasInstantMatch)
             return $this;
 
@@ -241,11 +276,12 @@ class Router {
         if (!isset($this->routes[$route]))
             $this->routes[$route] = [];
 
-        if (str_contains($methods, "|")) {
-            foreach (explode("|", $methods) as $method)
-                $this->routes[$route][$method] = $callable;
-        } else
-            $this->routes[$route][$methods] = $callable;
+        foreach (explode("|", $methods) as $method) {
+            $this->routes[$route][$method] = [
+                "callable" => $callable instanceof RequestHandler ? $callable->handle(...) : $callable,
+                "middlewares" => $middlewares
+            ];
+        }
 
         return $this;
     }
@@ -262,22 +298,31 @@ class Router {
 
             if (!($clazz instanceof ReflectionClass))
                 $clazz = new ReflectionClass($clazz);
+
             $controllers = $clazz->getAttributes(Controller::class);
+
+            $controllerAttribs = $clazz->getAttributes(With::class);
+
             foreach ($controllers as $controller) {
+
                 foreach ($clazz->getMethods() as $method) {
                     foreach ($method->getAttributes() as $attribute) {
                         if (in_array($attribute->getName(), [
                             Route::class,
                             Get::class,
                             Post::class,
-                            Patch::class
+                            Patch::class,
+                            Put::class,
                         ])) {
                             $route = $attribute->newInstance();
                             $basePath = "";
                             if (isset($controller))
                                 $basePath = $controller->newInstance()->pathPrefix;
+
+                            $middlewares = array_merge(...array_map(fn(\ReflectionAttribute $attrib) => $attrib->newInstance()->name, array_merge($method->getAttributes(With::class), $controllerAttribs)));
+
                             foreach ((is_array($route->path) ? $route->path : [$route->path]) as $path) {
-                                $this->addRoute($basePath . $path, $route->method, $method->getClosure($method->isStatic() ? null : $object));
+                                $this->addRoute($basePath . $path, $route->method, $method->getClosure($method->isStatic() ? null : $object), $middlewares);
                             }
                         }
                     }
@@ -288,43 +333,38 @@ class Router {
         return $this;
     }
 
-    public function get(string $route, callable|string $callable): Router {
-        return $this->addRoute($route, 'GET', $callable);
+    public function get(string $route, callable|RequestHandler|string $callable, array $middlewares = []): Router {
+        return $this->addRoute($route, 'GET', $callable, $middlewares);
     }
 
-    public function post(string $route, callable|string $callable): Router {
-        return $this->addRoute($route, 'POST', $callable);
+    public function post(string $route, callable|RequestHandler|string $callable, array $middlewares = []): Router {
+        return $this->addRoute($route, 'POST', $callable, $middlewares);
     }
 
-    public function put(string $route, callable|string $callable): Router {
-        return $this->addRoute($route, 'PUT', $callable);
+    public function put(string $route, callable|RequestHandler|string $callable, array $middlewares = []): Router {
+        return $this->addRoute($route, 'PUT', $callable, $middlewares);
     }
 
-    public function patch(string $route, callable|string $callable): Router {
-        return $this->addRoute($route, 'PATCH', $callable);
+    public function patch(string $route, callable|RequestHandler|string $callable, array $middlewares = []): Router {
+        return $this->addRoute($route, 'PATCH', $callable, $middlewares);
     }
 
-    public function delete(string $route, callable|string $callable): Router {
-        return $this->addRoute($route, 'DELETE', $callable);
+    public function delete(string $route, callable|RequestHandler|string $callable, array $middlewares = []): Router {
+        return $this->addRoute($route, 'DELETE', $callable, $middlewares);
     }
 
-    public function notFound(callable|string $notFound): Router {
-        $this->notFound = $notFound;
+    public function notFound(callable|RequestHandler|string $notFound): Router {
+        $this->notFound = $notFound instanceof RequestHandler ? $notFound->handle(...) : $notFound;
         return $this;
     }
 
-    public function before(string $route, callable $callable): Router {
-        $this->beforeInterceptor[$this->createRegex($route)] = $callable;
+    public function before(string $route, callable|RequestHandler $callable): Router {
+        $this->beforeInterceptor[$this->createRegex($route)] = $callable instanceof RequestHandler ? $callable->handle(...) : $callable;
         return $this;
     }
 
     public function setIncludeDirectory(string $includeDirectory): Router {
         $this->includeDirectory = $includeDirectory;
-        return $this;
-    }
-
-    public function setMatchProcessor(Closure $matchProcessor): Router {
-        $this->matchProcessor = $matchProcessor;
         return $this;
     }
 
@@ -340,5 +380,38 @@ class Router {
 
     public function getJsonPlus(): JSONPlus {
         return $this->jsonPlus;
+    }
+
+    public function exceptionHandler(Closure|ExceptionHandler $exceptionHandler): Router {
+        $this->exceptionHandler = $exceptionHandler instanceof ExceptionHandler ? $exceptionHandler->handle(...) : $exceptionHandler;
+        return $this;
+    }
+
+    public function middleware(string $name, Closure|Middleware $callable): Router {
+        $this->middlewares[$name] = $callable instanceof Middleware ? $callable->handle(...) : $callable;
+        return $this;
+    }
+
+    public function getResponseTransformers(): array {
+        return $this->responseTransformers;
+    }
+
+    public function setResponseTransformers(array $responseTransformers): Router {
+        $this->responseTransformers = $responseTransformers;
+        return $this;
+    }
+
+    public function responseTransformer(callable|ResponseTransformer $responseTransformer): Router {
+        $this->responseTransformers[] = $responseTransformer instanceof ResponseTransformer ? $responseTransformer->transform(...) : $responseTransformer;
+        return $this;
+    }
+
+    /**
+     * @param bool $transformAll Should strings be transformed as well?
+     * @return $this
+     */
+    public function jsonResponseTransformer(bool $transformAll = false) : Router {
+        $this->responseTransformer(new JSONResponseTransformer($this, $transformAll));
+        return $this;
     }
 }

@@ -9,14 +9,14 @@ class Response {
     ) {
     }
 
-    public function json(mixed $object): Response {
+    public function json(mixed $object): string {
         header('Content-Type: application/json');
         echo $this->router->getJsonPlus()->toJson($object);
         return $this;
     }
 
     public function setContentType(string $type): Response {
-        header('Content-Type: ' . $type);
+        $this->setHeader('Content-Type: ', $type);
         return $this;
     }
 

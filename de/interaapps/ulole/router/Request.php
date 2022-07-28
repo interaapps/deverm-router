@@ -8,13 +8,13 @@ class Request {
 
     public function __construct(
         private readonly Router $router,
-        private                 $body,
-        private                 $routeVars
+        private mixed $body,
+        private array $routeVars = []
     ) {
         $this->attributes = [];
     }
 
-    public function body() {
+    public function body() : mixed {
         return $this->body;
     }
 
@@ -117,4 +117,11 @@ class Request {
         return $this;
     }
 
+    public function setRouteVars(array $routeVars): void {
+        $this->routeVars = $routeVars;
+    }
+
+    public function setBody(mixed $body): void {
+        $this->body = $body;
+    }
 }

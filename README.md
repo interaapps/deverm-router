@@ -1,6 +1,18 @@
-# deverm-router 5.2
+# deverm-router 5.3
 Deverm-php-Router is an open-source PHP-router.
 
+## Contents
+- [Installation](#installation)
+- [Getting Started](#publicindexphp)
+- [Controller](#using-controllers)
+- [Route Variables](#route-variables)
+- [Parameter Injection](#parameter-injection)
+- [Middlewares](#middlewares)
+- [Response Transformers](#response-transformers)
+
+
+### Installation
+Deverm-Router requires `>PHP8.1`
 ```bash
 uppm i deverm
 # Or composer
@@ -17,16 +29,18 @@ use de\interaapps\ulole\router\Response;
 chdir('..'); 
 $router = new Router();
 
-// Using method or function
-$router->get("/", TestController::test(...));
-$router->get("/test", test(...));
+// If an object or array is returned in a handler, it'll be transformed into JSON
+$router->jsonResponseTransformer();
 
-// Using anonymous function
+
 $router->get("/test/{test}", function(Request $req, Response $res, string $test){
-    $res->json([
-        "given_test" => $test // or $req->getRouteVar(0) 
-    ]);
+    return [
+        "given_test" => $test
+    ];
 });
+
+// Using method or function
+$router->get("/test", test(...));
 
 // Including php files
 $router->setIncludeDirectory("resources/views");
@@ -34,6 +48,14 @@ $router->get("/", "homepage.php");
 
 $router->notFound(function(Request $req, Response $res){
     echo "Not found :.(";
+});
+
+// Everytime an Exception gets thrown in request handlers
+$router->exceptionHandler(function (Exception $e, Request $req) {
+    return [
+        "message" => $e->getMessage(),
+        "error" => true
+    ];
 });
 
 // Before interceptor
@@ -52,14 +74,6 @@ $router->get("/dashboard/bills", function(Request $req, Response $res){
     }
 });
 
-
-$router->notFound(function(Request $req, Response $res){
-    return "page not found :(";
-});
-
-// If using method. (The three dots are a special syntax from php 8.1)
-$router->notFound(NotFoundHandler::handle(...));
-
 // Running the app
 $router->run();
 ```
@@ -69,6 +83,7 @@ $router->run();
 <?php
 use de\interaapps\ulole\router\attributes\Controller;
 use de\interaapps\ulole\router\attributes\Route;
+use de\interaapps\ulole\router\attributes\With;
 use de\interaapps\ulole\router\attributes\methods\Get;
 use de\interaapps\ulole\router\attributes\methods\Post;
 use de\interaapps\ulole\router\Request;
@@ -114,7 +129,9 @@ RewriteRule ^(.+)$ index.php [QSA,L]
 ### Route variables
 ```php
 // Simple
-$router->get("/{example}", function (string $example) {});
+$router->get("/{name}", function (string $name) {
+    return "Hello {$name}";
+});
 
 // Optional route variable
 $router->get("/{?string:example}", function (string $example) {});
@@ -132,7 +149,7 @@ $router->get("/{i-:example}", function (int $example) {});
 $router->get("/{f:example}", function (float $example) {});
 ```
 
-### Parameters and Parameter Attributes
+### Parameter Injection
 ```php
 use de\interaapps\ulole\router\attributes\Attrib;
 use de\interaapps\ulole\router\attributes\Body;
@@ -160,4 +177,53 @@ class TestRequest {
 $router->post("/test", function (#[Body] TestRequest $request) {
     echo $request->hey;
 })
+```
+
+### Middlewares
+```php
+$router->middleware("admin", function (Request $req, Response $res, #[Attrib] User $user) {
+    if (!$user->isAdmin())
+        throw new Exception("Not logged in!"); 
+});
+
+$router->get("/admin/test", function () {
+    // ...
+}, ["admin"]);
+
+#[Controller("/admin")]
+#[With("admin")] // For all routes in this controller
+class MyController {
+    #[Get]
+    #[With("admin")] // For a specific route
+    public function index(){}
+}
+
+$router->addController(new MyController);
+```
+
+### Response Transformers
+```php
+// Custom response transformer
+$router->responseTransformer(function (Request $req, Response $res, mixed $body) {
+    if ($body instanceof TestResponse) {
+        return "This is my field ".$body->myField;
+    }
+    
+    // Next response transformer
+    return null;
+});
+
+// JSON Transformer
+// Transforms objects, arrays and booleans into JSON. If first parameter true, strings as well.
+$router->jsonResponseTransformer();
+
+$router->get("/", function(){
+    return ["Hello"];
+});
+// ["Hello"]
+
+$router->get("/test", function(){
+    return new TestResponse(myField: "Yay");
+});
+// This is my field yay
 ```
