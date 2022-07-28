@@ -74,12 +74,12 @@ use de\interaapps\ulole\router\Response;
 
 #[Controller("/users")]
 class UserController {
-    #[Route("/{i+:id}", method: 'GET')]
+    #[Route("/{i+:id}", method: 'GET')] // You can also use #[Get("/{i+:id}")]
     public function getUser(Request $req, Response $res, int $id) {
         return User::table()->where("id", $id)->first();
     }
     
-    #[Route("", method: 'POST')]
+    #[Route("", method: 'POST')] // You can also use #[Post("")]
     public function getUser(Request $req, Response $res, #[Body] NewUserRequest $newUserRequest) {
         $user = (new User())
             ->setName($newUserRequest->name)

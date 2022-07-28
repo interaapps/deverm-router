@@ -7,6 +7,9 @@ use de\interaapps\jsonplus\JSONPlus;
 use de\interaapps\ulole\router\attributes\Attrib;
 use de\interaapps\ulole\router\attributes\Body;
 use de\interaapps\ulole\router\attributes\Controller;
+use de\interaapps\ulole\router\attributes\methods\Get;
+use de\interaapps\ulole\router\attributes\methods\Patch;
+use de\interaapps\ulole\router\attributes\methods\Post;
 use de\interaapps\ulole\router\attributes\QueryParam;
 use de\interaapps\ulole\router\attributes\Route;
 use de\interaapps\ulole\router\attributes\RouteVar;
@@ -259,18 +262,24 @@ class Router {
 
             if (!($clazz instanceof ReflectionClass))
                 $clazz = new ReflectionClass($clazz);
-            $controller = $clazz->getAttributes(Controller::class);
-
-            foreach ($clazz->getMethods() as $method) {
-                foreach ($method->getAttributes() as $attribute) {
-                    if ($attribute->getName() == Route::class) {
-                        $route = $attribute->newInstance();
-                        $path = "";
-                        if (isset($controller[0]))
-                            $path = $controller[0]->newInstance()->pathPrefix;
-                        $path .= $route->path;
-
-                        $this->addRoute($path, $route->method, $method->getClosure($method->isStatic() ? null : $object));
+            $controllers = $clazz->getAttributes(Controller::class);
+            foreach ($controllers as $controller) {
+                foreach ($clazz->getMethods() as $method) {
+                    foreach ($method->getAttributes() as $attribute) {
+                        if (in_array($attribute->getName(), [
+                            Route::class,
+                            Get::class,
+                            Post::class,
+                            Patch::class
+                        ])) {
+                            $route = $attribute->newInstance();
+                            $basePath = "";
+                            if (isset($controller))
+                                $basePath = $controller->newInstance()->pathPrefix;
+                            foreach ((is_array($route->path) ? $route->path : [$route->path]) as $path) {
+                                $this->addRoute($basePath . $path, $route->method, $method->getClosure($method->isStatic() ? null : $object));
+                            }
+                        }
                     }
                 }
             }
